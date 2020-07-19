@@ -45,8 +45,9 @@ var (
 	errMissingItfType = errors.New("At least one interface type must be specified")
 )
 
-func (t *Type) String() string {
-	return typeStr[*t]
+// String implements the Stringer interface.
+func (t Type) String() string {
+	return typeStr[t]
 }
 
 // Set implements flag.Value interface.
@@ -58,6 +59,17 @@ func (t *Type) Set(value string) error {
 		}
 	}
 	return errInvalidItfType
+}
+
+// MarshalText implements TextUnmarshaler (for e.g. JSON encoding). For the
+// method to be found by the JSON encoder, use a value receiver.
+func (t Type) MarshalText() ([]byte, error) {
+	return []byte(t.String()), nil
+}
+
+// UnmarshalText implements TextMarshaler (for e.g. JSON decoding).
+func (t *Type) UnmarshalText(text []byte) error {
+	return t.Set(string(text))
 }
 
 // Types is a list of CCU interface types.
