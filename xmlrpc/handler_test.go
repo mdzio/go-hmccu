@@ -3,6 +3,7 @@ package xmlrpc
 import (
 	"bytes"
 	"errors"
+	"github.com/mdzio/go-hmccu/model"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -36,7 +37,7 @@ func TestServerUnknownMethod(t *testing.T) {
 
 	cln := Client{Addr: srv.URL}
 
-	res, err := cln.Call("unknownMethod", []*Value{})
+	res, err := cln.Call("unknownMethod", []*model.Value{})
 	if res != nil {
 		t.Errorf("unexpected result: %v", res)
 	}
@@ -55,8 +56,8 @@ func TestServerUnknownMethod(t *testing.T) {
 func TestServer(t *testing.T) {
 	h := &Handler{}
 	h.SystemMethods()
-	h.HandleFunc("echo", func(args *Value) (*Value, error) {
-		q := Q(args)
+	h.HandleFunc("echo", func(args *model.Value) (*model.Value, error) {
+		q := model.Q(args)
 		if len(q.Slice()) != 1 {
 			return nil, errors.New("invalid len")
 		}
@@ -67,19 +68,19 @@ func TestServer(t *testing.T) {
 
 	cln := Client{Addr: srv.URL}
 
-	resp, err := cln.Call("echo", []*Value{&Value{Int: "123"}})
+	resp, err := cln.Call("echo", []*model.Value{&model.Value{Int: "123"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := Q(resp)
+	e := model.Q(resp)
 	i := e.Int()
 	if e.Err() != nil || i != 123 {
 		t.Errorf("unexpected result: %v %d", e.Err(), i)
 	}
 
-	resp, err = cln.Call("echo", []*Value{
-		&Value{Int: "123"},
-		&Value{String: "force error"},
+	resp, err = cln.Call("echo", []*model.Value{
+		&model.Value{Int: "123"},
+		&model.Value{String: "force error"},
 	})
 	if resp != nil {
 		t.Errorf("unexpected response: %v", resp)
@@ -92,11 +93,11 @@ func TestServer(t *testing.T) {
 		t.Errorf("unexpected error type: %T", err)
 	}
 
-	resp, err = cln.Call("system.listMethods", []*Value{})
+	resp, err = cln.Call("system.listMethods", []*model.Value{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	e = Q(resp)
+	e = model.Q(resp)
 	arr := e.Slice()
 	if e.Err() != nil {
 		t.Fatal(e.Err())
@@ -113,8 +114,8 @@ func TestServer(t *testing.T) {
 func TestServerMulticall(t *testing.T) {
 	h := &Handler{}
 	h.SystemMethods()
-	h.HandleFunc("echo", func(args *Value) (*Value, error) {
-		q := Q(args)
+	h.HandleFunc("echo", func(args *model.Value) (*model.Value, error) {
+		q := model.Q(args)
 		if len(q.Slice()) != 1 {
 			return nil, errors.New("invalid len")
 		}
@@ -124,23 +125,23 @@ func TestServerMulticall(t *testing.T) {
 	defer srv.Close()
 	cln := Client{Addr: srv.URL}
 
-	resp, err := cln.Call("system.multicall", []*Value{
-		&Value{
-			Array: &Array{
-				[]*Value{
-					&Value{
-						Struct: &Struct{
-							[]*Member{
+	resp, err := cln.Call("system.multicall", []*model.Value{
+		&model.Value{
+			Array: &model.Array{
+				[]*model.Value{
+					&model.Value{
+						Struct: &model.Struct{
+							[]*model.Member{
 								{
 									"methodName",
-									&Value{FlatString: "echo"},
+									&model.Value{FlatString: "echo"},
 								},
 								{
 									"params",
-									&Value{
-										Array: &Array{
-											[]*Value{
-												&Value{
+									&model.Value{
+										Array: &model.Array{
+											[]*model.Value{
+												&model.Value{
 													FlatString: "Hello world!",
 												},
 											},
@@ -150,19 +151,19 @@ func TestServerMulticall(t *testing.T) {
 							},
 						},
 					},
-					&Value{
-						Struct: &Struct{
-							[]*Member{
+					&model.Value{
+						Struct: &model.Struct{
+							[]*model.Member{
 								{
 									"methodName",
-									&Value{FlatString: "echo"},
+									&model.Value{FlatString: "echo"},
 								},
 								{
 									"params",
-									&Value{
-										Array: &Array{
-											[]*Value{
-												&Value{
+									&model.Value{
+										Array: &model.Array{
+											[]*model.Value{
+												&model.Value{
 													I4: "123",
 												},
 											},
@@ -176,7 +177,7 @@ func TestServerMulticall(t *testing.T) {
 			},
 		},
 	})
-	e := Q(resp)
+	e := model.Q(resp)
 	a := e.Slice()
 	if e.Err() != nil {
 		t.Error(err)
@@ -194,8 +195,8 @@ func TestServerMulticall(t *testing.T) {
 
 func TestServerWithUnknownMethod(t *testing.T) {
 	h := &Handler{}
-	h.HandleUnknownFunc(func(name string, _ *Value) (*Value, error) {
-		v, _ := NewValue("Method " + name + " called")
+	h.HandleUnknownFunc(func(name string, _ *model.Value) (*model.Value, error) {
+		v, _ := model.NewValue("Method " + name + " called")
 		return v, nil
 	})
 	srv := httptest.NewServer(h)
@@ -203,14 +204,14 @@ func TestServerWithUnknownMethod(t *testing.T) {
 
 	cln := Client{Addr: srv.URL}
 
-	res, err := cln.Call("42", []*Value{})
+	res, err := cln.Call("42", []*model.Value{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 	if res == nil {
 		t.Fatal("missing result")
 	}
-	e := Q(res)
+	e := model.Q(res)
 	if str := e.String(); e.Err() != nil || str != "Method 42 called" {
 		t.Fatalf("unexpected result: %+v", res)
 	}

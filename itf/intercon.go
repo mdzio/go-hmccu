@@ -2,6 +2,7 @@ package itf
 
 import (
 	"errors"
+	"github.com/mdzio/go-hmccu/binrpc"
 	"net/http"
 	"strconv"
 	"strings"
@@ -31,6 +32,8 @@ const (
 	HmIPRF
 	// CCU2/3, RaspberryMatic with RF module
 	VirtualDevices
+	// CUxD
+	CUxD
 )
 
 var (
@@ -40,6 +43,7 @@ var (
 		System:         "System",
 		HmIPRF:         "HmIPRF",
 		VirtualDevices: "VirtualDevices",
+		CUxD:           "CUxD",
 	}
 	errInvalidItfType = errors.New("Invalid interface type identifier (expected: BidCosWired, BidCosRF, System, HmIPRF, VirtualDevices)")
 	errMissingItfType = errors.New("At least one interface type must be specified")
@@ -117,6 +121,7 @@ var (
 		System:         {"System", "", 2002},
 		HmIPRF:         {"HmIP-RF", "", 2010},
 		VirtualDevices: {"VirtualDevices", "/groups", 9292},
+		CUxD:           {"CUxD", "", 8701},
 	}
 )
 
@@ -127,6 +132,7 @@ type Interconnector struct {
 	Types     Types
 	IDPrefix  string
 	ServerURL string
+	BinRPCURL string
 	Receiver  Receiver
 
 	clients map[string]*RegisteredClient
@@ -141,10 +147,17 @@ func (i *Interconnector) Start() {
 		cfg := configs[itfType]
 		regID := i.IDPrefix + cfg.reGaHssID
 		addr := "http://" + i.CCUAddr + ":" + strconv.Itoa(cfg.port) + cfg.path
+		registrationURL := i.ServerURL + rpcPath
+
+		if cfg.reGaHssID == "CUxD" {
+			addr = i.CCUAddr + ":" + strconv.Itoa(cfg.port)
+			registrationURL = i.BinRPCURL
+		}
+
 		iLog.Infof("Creating interface client for %s, %s", addr, cfg.reGaHssID)
 		itf := &RegisteredClient{
 			Client:          NewClient(addr),
-			RegistrationURL: i.ServerURL + rpcPath,
+			RegistrationURL: registrationURL,
 			RegistrationID:  regID,
 			ReGaHssID:       cfg.reGaHssID,
 		}
@@ -152,13 +165,27 @@ func (i *Interconnector) Start() {
 		i.clients[regID] = itf
 	}
 
-	// register XMLRPC handler
+	// register XMLRP<C han>dler
 	handler := NewHandler(i)
 	http.Handle(rpcPath, handler)
+
+	tcpHandler := NewRpcHandler(i)
+	go binrpc.Server(i.BinRPCURL, tcpHandler)
 
 	// register at the CCU interfaces
 	for _, c := range i.clients {
 		c.Start()
+		if c.ReGaHssID == "CUxD" {
+			devices, err := c.Client.ListDevices()
+			if err != nil {
+				iLog.Debugf("Failed to list devices for CUxD: %s", err)
+				continue
+			}
+			err = i.NewDevices(c.RegistrationID, devices)
+			if err != nil {
+				iLog.Debugf("Failed to call new devices: %s", err)
+			}
+		}
 	}
 }
 

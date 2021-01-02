@@ -2,10 +2,9 @@ package itf
 
 import (
 	"fmt"
+	"github.com/mdzio/go-hmccu/model"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/mdzio/go-hmccu/xmlrpc"
 )
 
 type receiver struct {
@@ -56,24 +55,24 @@ func TestServer(t *testing.T) {
 
 	cases := []struct {
 		want string
-		call func() (*xmlrpc.Value, error)
+		call func() (*model.Value, error)
 	}{
 		{
 			"interfaceID address valueKey 123.456",
-			func() (*xmlrpc.Value, error) {
+			func() (*model.Value, error) {
 				return nil, cln.Event("interfaceID", "address", "valueKey", 123.456)
 			},
 		},
 		{
 			"myid [ABC123 DEF456]",
-			func() (*xmlrpc.Value, error) {
-				return cln.Call("deleteDevices", []*xmlrpc.Value{
-					&xmlrpc.Value{FlatString: "myid"},
-					&xmlrpc.Value{
-						Array: &xmlrpc.Array{
-							Data: []*xmlrpc.Value{
-								&xmlrpc.Value{FlatString: "ABC123"},
-								&xmlrpc.Value{FlatString: "DEF456"},
+			func() (*model.Value, error) {
+				return cln.Call("deleteDevices", []*model.Value{
+					&model.Value{FlatString: "myid"},
+					&model.Value{
+						Array: &model.Array{
+							Data: []*model.Value{
+								&model.Value{FlatString: "ABC123"},
+								&model.Value{FlatString: "DEF456"},
 							},
 						},
 					},
@@ -82,34 +81,34 @@ func TestServer(t *testing.T) {
 		},
 		{
 			"myid ABC123 3",
-			func() (*xmlrpc.Value, error) {
-				return cln.Call("updateDevice", []*xmlrpc.Value{
-					&xmlrpc.Value{FlatString: "myid"},
-					&xmlrpc.Value{FlatString: "ABC123"},
-					&xmlrpc.Value{Int: "3"},
+			func() (*model.Value, error) {
+				return cln.Call("updateDevice", []*model.Value{
+					&model.Value{FlatString: "myid"},
+					&model.Value{FlatString: "ABC123"},
+					&model.Value{Int: "3"},
 				})
 			},
 		},
 		{
 			"myid ABC123 DEF456",
-			func() (*xmlrpc.Value, error) {
-				return cln.Call("replaceDevice", []*xmlrpc.Value{
-					&xmlrpc.Value{FlatString: "myid"},
-					&xmlrpc.Value{FlatString: "ABC123"},
-					&xmlrpc.Value{FlatString: "DEF456"},
+			func() (*model.Value, error) {
+				return cln.Call("replaceDevice", []*model.Value{
+					&model.Value{FlatString: "myid"},
+					&model.Value{FlatString: "ABC123"},
+					&model.Value{FlatString: "DEF456"},
 				})
 			},
 		},
 		{
 			"myid [ABC123 DEF456]",
-			func() (*xmlrpc.Value, error) {
-				return cln.Call("readdedDevice", []*xmlrpc.Value{
-					&xmlrpc.Value{FlatString: "myid"},
-					&xmlrpc.Value{
-						Array: &xmlrpc.Array{
-							Data: []*xmlrpc.Value{
-								&xmlrpc.Value{FlatString: "ABC123"},
-								&xmlrpc.Value{FlatString: "DEF456"},
+			func() (*model.Value, error) {
+				return cln.Call("readdedDevice", []*model.Value{
+					&model.Value{FlatString: "myid"},
+					&model.Value{
+						Array: &model.Array{
+							Data: []*model.Value{
+								&model.Value{FlatString: "ABC123"},
+								&model.Value{FlatString: "DEF456"},
 							},
 						},
 					},
@@ -123,7 +122,7 @@ func TestServer(t *testing.T) {
 		if err != nil {
 			t.Errorf("test case %d: unexpected client error: %v", no+1, err)
 		}
-		q := xmlrpc.Q(res)
+		q := model.Q(res)
 		str := q.String()
 		if q.Err() != nil || str != "" {
 			t.Error("unexpected client result: ", res)

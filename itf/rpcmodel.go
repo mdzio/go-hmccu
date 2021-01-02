@@ -1,6 +1,8 @@
 package itf
 
-import "github.com/mdzio/go-hmccu/xmlrpc"
+import (
+	"github.com/mdzio/go-hmccu/model"
+)
 
 // DeviceDescription describes a HomeMatic device.
 type DeviceDescription struct {
@@ -49,7 +51,7 @@ type DeviceDescription struct {
 }
 
 // ReadFrom reads the field values from an xmlrpc.Query.
-func (d *DeviceDescription) ReadFrom(e *xmlrpc.Query) {
+func (d *DeviceDescription) ReadFrom(e *model.Query) {
 	d.Type = e.TryKey("TYPE").String()
 	d.Address = e.TryKey("ADDRESS").String()
 	d.RFAddress = e.TryKey("RF_ADDRESS").Int()
@@ -111,7 +113,7 @@ type ParameterDescription struct {
 }
 
 // ReadFrom reads the field values from an xmlrpc.Query.
-func (p *ParameterDescription) ReadFrom(e *xmlrpc.Query) {
+func (p *ParameterDescription) ReadFrom(e *model.Query) {
 	p.Type = e.TryKey("TYPE").String()
 	p.Operations = e.TryKey("OPERATIONS").Int()
 	p.Flags = e.TryKey("FLAGS").Int()

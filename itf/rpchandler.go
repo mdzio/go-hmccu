@@ -2,50 +2,27 @@ package itf
 
 import (
 	"fmt"
+	"github.com/mdzio/go-hmccu/binrpc"
 	"github.com/mdzio/go-hmccu/model"
 
-	"github.com/mdzio/go-hmccu/xmlrpc"
 	"github.com/mdzio/go-logging"
 )
 
-var svrLog = logging.Get("itf-server")
-
-// A Receiver gets all notifications from the CCU.
-type Receiver interface {
-	// A value has changed.
-	Event(interfaceID, address, valueKey string, value interface{}) error
-
-	// Devices are added.
-	NewDevices(interfaceID string, devDescriptions []*DeviceDescription) error
-
-	// Devices are deleted.
-	DeleteDevices(interfaceID string, addresses []string) error
-
-	// A device or channels has changed. hint=0: any changes; hint=1: number of
-	// links changed
-	UpdateDevice(interfaceID, address string, hint int) error
-
-	// A device was replaced.
-	ReplaceDevice(interfaceID, oldDeviceAddress, newDeviceAddress string) error
-
-	// ReaddedDevice is called, when an already connected device is paired again
-	// with the CCU. Deleted logical devices are listed in deletedAddresses.
-	ReaddedDevice(interfaceID string, deletedAddresses []string) error
-}
+var rpcsvrLog = logging.Get("itf-server")
 
 // Handler forwards HM XML-RPC interface calls to the receiver. After calling
 // init on BidCos-RF normally following callbacks happen: system.listMethods,
 // listDevices, newDevices and system.multicall with event's. Attention:
 // listDevices is not forwarded to the receiver and returns always an empty
 // device list to the CCU.
-type Handler struct {
-	xmlrpc.Handler
+type RpcHandler struct {
+	binrpc.Handler
 	receiver Receiver
 }
 
 // NewHandler creates a new HM XML-RPC handler.
-func NewHandler(receiver Receiver) *Handler {
-	h := &Handler{
+func NewRpcHandler(receiver Receiver) *RpcHandler {
+	h := &RpcHandler{
 		receiver: receiver,
 	}
 	h.SystemMethods()
@@ -55,7 +32,7 @@ func NewHandler(receiver Receiver) *Handler {
 		if len(q.Slice()) != 4 {
 			return nil, fmt.Errorf("Expected 4 arguments for event method: %d", len(q.Slice()))
 		}
-		interfaceID := q.Idx(0).String()
+		interfaceID := "CCU-Jack-" + q.Idx(0).String()
 		address := q.Idx(1).String()
 		valueKey := q.Idx(2).String()
 		value := q.Idx(3).Any()

@@ -5,7 +5,7 @@ Environment variables for integration tests:
 	LOG_LEVEL:
 		off, error, warning, info, debug, trace
 */
-package xmlrpc
+package binrpc
 
 import (
 	"github.com/mdzio/go-hmccu/model"
@@ -29,32 +29,32 @@ func getXMLRPCAddr(t *testing.T) string {
 		t.Skip("environment variable CCU_ADDRESS not set")
 	}
 	// use BidCos-RF XML-RPC interface
-	return "http://" + ccuAddr + ":2001"
+	return ccuAddr + ":8701"
 }
 
 func TestClient_Call(t *testing.T) {
 	ccuAddress := getXMLRPCAddr(t)
 	c := Client{Addr: ccuAddress}
 
-	d, err := c.Call("unknownMethod", []*model.Value{})
-	if d != nil || err == nil {
-		t.Error("error expected")
-	}
-	if err.Error() != "XML-RPC fault (code: -1, message: unknownMethod: unknown method name)" {
-		t.Errorf("unexpected error: %v", err)
-	}
+	//d, err := c.Call("unknownMethod", []*model.Value{})
+	//if d != nil || err == nil {
+	//	t.Error("error expected")
+	//}
+	//if err.Error() != "XML-RPC fault (code: -1, message: unknownMethod: unknown method name)" {
+	//	t.Errorf("unexpected error: %v", err)
+	//}
 
-	d, err = c.Call("getDeviceDescription", []*model.Value{&model.Value{FlatString: "BidCoS-RF:0"}})
+	d, err := c.Call("getDeviceDescription", []*model.Value{&model.Value{FlatString: "CUX1200002:1"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	e := model.Q(d)
 	str := e.Key("ADDRESS").String()
-	if str != "BidCoS-RF:0" {
+	if str != "CUX1200002:1" {
 		t.Error("invalid ADDRESS")
 	}
 	str = e.Key("PARENT_TYPE").String()
-	if str != "HM-RCV-50" {
+	if str != "HM-WS550STH-I" {
 		t.Error("invalid PARENT_TYPE")
 	}
 	arr := e.Key("PARAMSETS").Slice()

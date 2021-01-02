@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"fmt"
+	"github.com/mdzio/go-hmccu/model"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -26,17 +27,17 @@ type Client struct {
 }
 
 // Call executes an remote procedure call.
-func (c *Client) Call(method string, params []*Value) (*Value, error) {
+func (c *Client) Call(method string, params []*model.Value) (*model.Value, error) {
 	clnLog.Tracef("Calling method %s on %s", method, c.Addr)
 
 	// build XML object tree
-	ps := make([]*Param, len(params))
+	ps := make([]*model.Param, len(params))
 	for i, p := range params {
-		ps[i] = &Param{p}
+		ps[i] = &model.Param{p}
 	}
 	methodCall := &MethodCall{
 		MethodName: method,
-		Params:     &Params{ps},
+		Params:     &model.Params{ps},
 	}
 
 	// use ISO8859-1 character encoding for request
@@ -96,7 +97,7 @@ func (c *Client) Call(method string, params []*Value) (*Value, error) {
 
 	// check fault
 	if resp.Fault != nil {
-		e := Q(resp.Fault)
+		e := model.Q(resp.Fault)
 		faultCode := e.Key("faultCode").Int()
 		faultString := e.Key("faultString").String()
 		if e.Err() != nil {
