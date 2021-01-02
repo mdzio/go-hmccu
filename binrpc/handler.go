@@ -12,9 +12,6 @@ import (
 	"github.com/mdzio/go-logging"
 )
 
-// max. size of a valid request, if not specified: 10 MB
-const requestSizeLimit = 10 * 1024 * 1024
-
 var svrLog = logging.Get("binrpc-server")
 
 // Handler implements a http.Handler which can handle XML-RPC requests. Remote
@@ -82,39 +79,4 @@ func (h *Handler) ServeTCP(conn net.Conn) {
 		return
 	}
 
-	//var methodResponse *xmlrpc.MethodResponse
-	//if err != nil {
-	//	methodResponse = newFaultResponse(err)
-	//} else {
-	//	methodResponse = newMethodResponse(res)
-	//}
-	//
-	//// use ISO8859-1 character encoding for response
-	//var respBuf bytes.Buffer
-	//respWriter := charmap.ISO8859_1.NewEncoder().Writer(&respBuf)
-	//
-	//// write xml header
-	//respWriter.Write([]byte("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n"))
-	//
-	//// encode response to xml
-	//enc := xml.NewEncoder(respWriter)
-	//err = enc.EncodeRequest(methodResponse)
-	//if err != nil {
-	//	svrLog.Errorf("Encoding of response for %s failed: %v", req.RemoteAddr, err)
-	//	http.Error(resp, "Encoding of response failed: "+err.Error(), http.StatusInternalServerError)
-	//	return
-	//}
-	//if svrLog.TraceEnabled() {
-	//	// attention: log message is ISO8859-1 encoded!
-	//	svrLog.Tracef("Response XML: %s", respBuf.String())
-	//}
-	//
-	//// send response
-	//resp.Header().Set("Content-Type", "text/xml")
-	//resp.Header().Set("Content-Length", strconv.Itoa(respBuf.Len()))
-	//_, err = resp.Write(respBuf.Bytes())
-	//if err != nil {
-	//	svrLog.Warningf("Sending of response for %s failed: %v", req.RemoteAddr, err)
-	//	return
-	//}
 }
