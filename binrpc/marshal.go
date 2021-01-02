@@ -71,9 +71,7 @@ func (e *Encoder) EncodeRequest(method string, params []*model.Value) error {
 		return fmt.Errorf("Failed to add params: %w", err)
 	}
 
-	e.b.Flush()
-
-	return nil
+	return e.b.Flush()
 }
 
 func (e *Encoder) EncodeResponse(param *model.Value) error {
@@ -85,7 +83,6 @@ func (e *Encoder) EncodeResponse(param *model.Value) error {
 			return err
 		}
 	} else {
-		svrLog.Debugf("Encoding response value: %#v", param)
 		err := e.encodeParam(param)
 		if err != nil {
 			return err
@@ -113,9 +110,7 @@ func (e *Encoder) EncodeResponse(param *model.Value) error {
 		return fmt.Errorf("Failed to add param: %w", err)
 	}
 
-	e.b.Flush()
-
-	return nil
+	return e.b.Flush()
 }
 
 func (e *Encoder) encodeParams(params []*model.Value) error {

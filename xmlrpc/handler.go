@@ -32,79 +32,6 @@ type Handler struct {
 	unknown func(string, *model.Value) (*model.Value, error)
 }
 
-//// Handle registers a Method.
-//func (h *Handler) Handle(name string, m Method) {
-//	h.mutex.Lock()
-//	defer h.mutex.Unlock()
-//
-//	if h.methods == nil {
-//		h.methods = make(map[string]Method)
-//	}
-//	h.methods[name] = m
-//}
-
-//// HandleFunc registers an ordinary function as Method.
-//func (h *Handler) HandleFunc(name string, f func(*Value) (*Value, error)) {
-//	h.Handle(name, MethodFunc(f))
-//}
-//
-//// HandleUnknownFunc registers an ordinary function to handle unknown methods
-//// names.
-//func (h *Handler) HandleUnknownFunc(f func(string, *Value) (*Value, error)) {
-//	h.mutex.Lock()
-//	defer h.mutex.Unlock()
-//
-//	h.unknown = f
-//}
-//
-//// SystemMethods adds system.multicall and system.listMethods.
-//func (h *Handler) SystemMethods() {
-//
-//	// attention: currently if one methods fails, the complete multicall fails.
-//	h.HandleFunc(
-//		"system.multicall",
-//		func(parameters *Value) (*Value, error) {
-//			q := Q(parameters)
-//			calls := q.Idx(0).Slice()
-//			if q.Err() != nil {
-//				return nil, fmt.Errorf("Invalid system.multicall: %v", q.Err())
-//			}
-//			svrLog.Debugf("Call of method system.multicall with %d elements received", len(calls))
-//			var results []*Value
-//			for _, call := range calls {
-//				methodName := call.Key("methodName").String()
-//				// check for an array
-//				call.Key("params").Slice()
-//				if q.Err() != nil {
-//					return nil, fmt.Errorf("Invalid system.multicall: %v", q.Err())
-//				}
-//				// dispatch call
-//				res, err := h.dispatch(methodName, call.Key("params").Value())
-//				if err != nil {
-//					return nil, fmt.Errorf("Method %s in system.multicall failed: %v", methodName, err)
-//				}
-//				results = append(results, res)
-//			}
-//			return &Value{Array: &Array{results}}, nil
-//		},
-//	)
-//
-//	h.HandleFunc(
-//		"system.listMethods",
-//		func(*Value) (*Value, error) {
-//			svrLog.Debug("Call of method system.listMethods received")
-//			h.mutex.RLock()
-//			defer h.mutex.RUnlock()
-//
-//			names := []*Value{}
-//			for name := range h.methods {
-//				names = append(names, &Value{FlatString: name})
-//			}
-//			return &Value{Array: &Array{names}}, nil
-//		},
-//	)
-//}
-
 func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	svrLog.Tracef("Request received from %s, URI %s", req.RemoteAddr, req.RequestURI)
 
@@ -186,20 +113,3 @@ func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 }
-
-//func (h *Handler) dispatch(methodName string, args *Value) (*Value, error) {
-//	h.mutex.RLock()
-//	method, ok := h.methods[methodName]
-//	unknown := h.unknown
-//	h.mutex.RUnlock()
-//
-//	if !ok {
-//		if unknown == nil {
-//			unknown = func(name string, _ *Value) (*Value, error) {
-//				return nil, fmt.Errorf("Unknown method: %s", name)
-//			}
-//		}
-//		return unknown(methodName, args)
-//	}
-//	return method.Call(args)
-//}
