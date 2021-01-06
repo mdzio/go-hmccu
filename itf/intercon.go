@@ -168,6 +168,11 @@ func (i *Interconnector) Stop() {
 	for _, itfClient := range i.clients {
 		itfClient.Stop()
 	}
+
+	// unregister XMLRPC handler
+	// A registered handler at the http.ServeMux can not be unregistered. Maybe
+	// a switchable handler should be used, which is always be registered and
+	// can be temporarily switched to a not-found handler.
 }
 
 // Client returns the specified interface client.
