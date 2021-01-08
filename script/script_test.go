@@ -2,47 +2,45 @@ package script
 
 import (
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/mdzio/go-logging"
 )
 
+// Test configuration (environment variables):
+const (
+	// log level, e.g. TRACE
+	logLevel = "LOG_LEVEL"
+
+	// address of the test CCU, e.g. 192.168.0.10
+	ccuAddress = "CCU_ADDRESS"
+
+	// CCU system variables (must exist)
+	sysVarLogic  = "Sysvar logic"
+	sysVarAlarm  = "Sysvar alarm"
+	sysVarEnum   = "Sysvar enum"
+	sysVarNumber = "Sysvar number"
+	sysVarString = "Sysvar string"
+)
+
 func init() {
 	var l logging.LogLevel
-	err := l.Set(os.Getenv("LOG_LEVEL"))
+	err := l.Set(os.Getenv(logLevel))
 	if err == nil {
 		logging.SetLevel(l)
 	}
 }
 
-func ccuAddr(t *testing.T) string {
-	addr := os.Getenv("CCU_ADDRESS")
-	if len(addr) == 0 {
-		t.Skip("env variable CCU_ADDRESS not set")
+func config(t *testing.T, name string) string {
+	v := os.Getenv(name)
+	if len(v) == 0 {
+		t.Skip("env variable " + name + " not set")
 	}
-	return addr
-}
-
-// button with rooms roomBathroom, roomBedroom and functions funcButton, funcCentral.
-func buttonChAddr(t *testing.T) string {
-	addr := os.Getenv("BUTTON_CHANNEL_ADDRESS")
-	if len(addr) == 0 {
-		t.Skip("env variable BUTTON_CHANNEL_ADDRESS not set")
-	}
-	return addr
-}
-
-func buttonFullAddr(t *testing.T) string {
-	addr := os.Getenv("BUTTON_FULL_ADDRESS")
-	if len(addr) == 0 {
-		t.Skip("env variable BUTTON_FULL_ADDRESS not set")
-	}
-	return addr
+	return v
 }
 
 func TestScriptClient_Execute(t *testing.T) {
-	cln := &Client{Addr: ccuAddr(t)}
+	cln := &Client{Addr: config(t, ccuAddress)}
 
 	res, err := cln.Execute(`WriteLine("Hello");`)
 	if err != nil {
@@ -63,8 +61,8 @@ func TestScriptClient_Execute(t *testing.T) {
 			break
 		}
 	}
-	if svp.ISEID == "0" {
-		t.Error("expected system variable 'presence'")
+	if svp == nil {
+		t.Fatal("expected system variable 'presence'")
 	}
 	if svp.Operations != 7 || svp.Type != "BOOL" {
 		t.Error("invalid system variable 'presence'")
@@ -72,7 +70,7 @@ func TestScriptClient_Execute(t *testing.T) {
 }
 
 func TestScriptClient_Rooms(t *testing.T) {
-	cln := &Client{Addr: ccuAddr(t)}
+	cln := &Client{Addr: config(t, ccuAddress)}
 
 	_, err := cln.Rooms()
 	if err != nil {
@@ -81,7 +79,7 @@ func TestScriptClient_Rooms(t *testing.T) {
 }
 
 func TestScriptClient_Functions(t *testing.T) {
-	cln := &Client{Addr: ccuAddr(t)}
+	cln := &Client{Addr: config(t, ccuAddress)}
 
 	_, err := cln.Functions()
 	if err != nil {
@@ -90,7 +88,7 @@ func TestScriptClient_Functions(t *testing.T) {
 }
 
 func TestScriptClient_DevicesAndChannels(t *testing.T) {
-	cln := &Client{Addr: ccuAddr(t)}
+	cln := &Client{Addr: config(t, ccuAddress)}
 
 	ds, err := cln.Devices()
 	if err != nil {
@@ -109,74 +107,8 @@ func TestScriptClient_DevicesAndChannels(t *testing.T) {
 	}
 }
 
-func TestScriptClient_SystemVariables(t *testing.T) {
-	cln := &Client{Addr: ccuAddr(t)}
-
-	svs, err := cln.SystemVariables()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, sv := range svs {
-		if strings.HasPrefix(sv.Name, "Systemvariable ") {
-			v, _, _, err := cln.ReadSysVar(sv)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			switch sv.Type {
-			case "BOOL":
-				fallthrough
-			case "ALARM":
-				b := v.(bool)
-				err = cln.WriteSysVar(sv, !b)
-				if err != nil {
-					t.Fatal(err)
-				}
-			case "ENUM":
-				i := v.(int)
-				err = cln.WriteSysVar(sv, i+1)
-				if err != nil {
-					t.Fatal(err)
-				}
-			case "FLOAT":
-				f := v.(float64)
-				err = cln.WriteSysVar(sv, f+1.234)
-				if err != nil {
-					t.Fatal(err)
-				}
-			case "STRING":
-				s := v.(string)
-				err = cln.WriteSysVar(sv, s+"Test")
-				if err != nil {
-					t.Fatal(err)
-				}
-			}
-
-			v, _, _, err = cln.ReadSysVar(sv)
-			if err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
-}
-
-func TestScriptClient_Value(t *testing.T) {
-	cln := &Client{Addr: ccuAddr(t)}
-
-	v, ts, _, err := cln.ReadValue("\""+buttonFullAddr(t)+"\"", "ACTION")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := v.(bool); !ok {
-		t.Fatal("invalid type")
-	}
-	if ts.IsZero() {
-		t.Fatal("invalid timestamp")
-	}
-}
-
-func TestScriptClient_EnumPrograms(t *testing.T) {
-	cln := &Client{Addr: ccuAddr(t)}
+func TestScriptClient_Programs(t *testing.T) {
+	cln := &Client{Addr: config(t, ccuAddress)}
 
 	ps, err := cln.Programs()
 	if err != nil {
@@ -184,5 +116,90 @@ func TestScriptClient_EnumPrograms(t *testing.T) {
 	}
 	for _, p := range ps {
 		t.Logf("%v", p)
+	}
+}
+
+func TestScriptClient_ReadWriteSysVarTypes(t *testing.T) {
+	cln := &Client{Addr: config(t, ccuAddress)}
+	svs, err := cln.SystemVariables()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name   string
+		values []interface{}
+	}{
+		{sysVarLogic, []interface{}{true, false}},
+		{sysVarAlarm, []interface{}{true, false}},
+		{sysVarEnum, []interface{}{2, 1}},
+		{sysVarNumber, []interface{}{42.4, 21.21}},
+		{sysVarString, []interface{}{"abc def", "\n", "Line 1\nLine 2"}},
+	}
+	for _, c := range cases {
+		sv := svs.Find(c.name)
+		if sv == nil {
+			t.Errorf("sysvar %s does not exist", c.name)
+			continue
+		}
+		for _, v := range c.values {
+			err := cln.WriteSysVar(sv, v)
+			if err != nil {
+				t.Error(err)
+				continue
+			}
+			rv, err := cln.ReadSysVars(SysVarDefs{sv})
+			if err != nil {
+				t.Error(err)
+				continue
+			}
+			if rv[0].Value != v {
+				t.Errorf("verify failed for sysvar %s, value %v", c.name, v)
+			}
+		}
+	}
+}
+
+func TestScriptClient_ReadMultipleSysVars(t *testing.T) {
+	cln := &Client{Addr: config(t, ccuAddress)}
+	all, err := cln.SystemVariables()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// sysvar which should not exist
+	svs := SysVarDefs{&SysVarDef{ISEID: "999999"}}
+	// sysvars which should work
+	for _, n := range []string{sysVarLogic, sysVarAlarm, sysVarEnum, sysVarNumber, sysVarString} {
+		sv := all.Find(n)
+		if sv == nil {
+			t.Fatalf("sysvar %s does not exist", n)
+		}
+		svs = append(svs, sv)
+	}
+	res, err := cln.ReadSysVars(svs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res[0].Err == nil {
+		t.Error("expected error")
+	}
+	for _, r := range res[1:] {
+		if r.Err != nil {
+			t.Error(r.Err)
+		}
+	}
+}
+
+func TestScriptClient_ReadDeviceValue(t *testing.T) {
+	cln := &Client{Addr: config(t, ccuAddress)}
+
+	res, err := cln.ReadValues([]ValObjDef{{"BidCos-RF.BidCoS-RF:1.PRESS_SHORT", "ACTION"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := res[0].Value.(bool); !ok {
+		t.Fatal("invalid type")
+	}
+	if res[0].Timestamp.IsZero() {
+		t.Fatal("invalid timestamp")
 	}
 }

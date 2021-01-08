@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"text/template"
@@ -124,6 +126,24 @@ if (sv) {
 	WriteLine("Not found");
 }`
 
+// readValuesScript expects as dot parameter a tab separated string of object
+// IDs. Special characters in string data points are returned percent encoded.
+const readValuesScript = `! Reading multiple values
+string id; foreach(id,"{{ . }}") {
+	var dp=dom.GetObject(id);
+	if (dp) {
+	  if (dp.IsTypeOf(OT_DP) || dp.IsTypeOf(OT_VARDP) || dp.IsTypeOf(OT_ALARMDP)) {
+		WriteLine("OK"); 
+		WriteLine(dp.Timestamp().ToInteger());
+		WriteLine(dp.Value().ToString().Replace("%", "%25").Replace("\n", "%0A"));
+	  } else {
+		WriteLine("Object has wrong type");
+	  }
+	} else {
+	  WriteLine("Not found");
+	}
+}`
+
 const writeValueScript = `! Writing value
 var sv=dom.GetObject({{ .ISEID }});
 if (sv) {
@@ -148,6 +168,7 @@ var (
 	readExecTimeTempl = template.Must(template.New("readExecTime").Parse(readExecTimeScript))
 	enumSysVarsTempl  = template.Must(template.New("enumSysVars").Parse(enumSysVarsScript))
 	readValueTempl    = template.Must(template.New("readValue").Parse(readValueScript))
+	readValuesTempl   = template.Must(template.New("readValues").Parse(readValuesScript))
 	writeValueTempl   = template.Must(template.New("writeValue").Parse(writeValueScript))
 )
 
@@ -256,6 +277,19 @@ func (sv *SysVarDef) Equal(o *SysVarDef) bool {
 		}
 	}
 	return true
+}
+
+// SysVarDefs is a slice of SysVarDef.
+type SysVarDefs []*SysVarDef
+
+// Find finds a system variable by name. If not found, nil is returned.
+// SysVarDefs must be sorted.
+func (s SysVarDefs) Find(name string) *SysVarDef {
+	i := sort.Search(len(s), func(i int) bool { return s[i].Name >= name })
+	if i < len(s) && s[i].Name == name {
+		return s[i]
+	}
+	return nil
 }
 
 // AspectDef describes a room or function of a channel.
@@ -472,7 +506,8 @@ func (sc *Client) Channels(iseID string) ([]ChannelDef, error) {
 }
 
 // SystemVariables retrieves the list of system variables in the ReGaHss.
-func (sc *Client) SystemVariables() ([]*SysVarDef, error) {
+// SysVarDefs is returned sorted.
+func (sc *Client) SystemVariables() (SysVarDefs, error) {
 	scriptLog.Debug("Retrieving list of system variables")
 
 	// query ReGaHss
@@ -482,7 +517,7 @@ func (sc *Client) SystemVariables() ([]*SysVarDef, error) {
 	}
 
 	// parse response
-	var sysvars []*SysVarDef
+	var sysvars SysVarDefs
 	for _, l := range lines {
 		fs := strings.Split(l, "\t")
 		if len(fs) == 11 {
@@ -533,103 +568,144 @@ func (sc *Client) SystemVariables() ([]*SysVarDef, error) {
 			scriptLog.Warning("Retrieving list of system variables: Invalid response line: ", l)
 		}
 	}
+
+	// sort by name for quick lookup
+	sort.Slice(sysvars, func(i, j int) bool { return sysvars[i].Name < sysvars[j].Name })
+
 	return sysvars, nil
 }
 
-// ReadValue reads the value of an ReGaDOM object.
-func (sc *Client) ReadValue(iseID, typeStr string) (value interface{}, timestamp time.Time, uncertain bool, err error) {
-	scriptLog.Debug("Reading value of object: ", iseID)
+// ValObjDef identifies a ReGaDom value object and its data type.
+type ValObjDef struct {
+	ISEID, Type string
+}
+
+// Value is the result of reading the value of an ReGaDom object.
+type Value struct {
+	Value     interface{}
+	Timestamp time.Time
+	Uncertain bool
+	Err       error
+}
+
+// ReadValues reads values of multiple ReGaDOM objects.
+func (sc *Client) ReadValues(objs []ValObjDef) ([]Value, error) {
+	// build tab separated list of IDs
+	sb := strings.Builder{}
+	first := true
+	for _, obj := range objs {
+		if first {
+			first = false
+		} else {
+			sb.WriteRune('\t')
+		}
+		sb.WriteString(obj.ISEID)
+	}
+	ids := sb.String()
+	if scriptLog.DebugEnabled() {
+		scriptLog.Debug("Reading values of objects: ", strings.ReplaceAll(ids, "\t", " "))
+	}
 
 	// execute script
-	var err0 error
-	resp, err0 := sc.ExecuteTempl(readValueTempl, iseID)
-	if err0 != nil {
-		err = fmt.Errorf("Reading value of %s failed: %v", iseID, err0)
-		return
-	}
-	if len(resp) == 1 && resp[0] != "OK" {
-		err = fmt.Errorf("Reading value of %s failed: HM script signals error: %s", iseID, resp[0])
-		return
-	}
-	if len(resp) < 3 {
-		err = fmt.Errorf("Reading value of %s failed: Expected at least 3 response lines", iseID)
-		return
+	resp, err := sc.ExecuteTempl(readValuesTempl, ids)
+	if err != nil {
+		return nil, fmt.Errorf("Reading object values failed: %v", err)
 	}
 
-	// convert value
-	strval := strings.Join(resp[2:], "\n")
-	switch typeStr {
-	case "BOOL":
-		fallthrough
-	case "ALARM":
-		fallthrough
-	case "ACTION":
-		if strval == "" {
-			value = false
-			uncertain = true
-		} else {
-			value, err0 = strconv.ParseBool(strval)
-			if err0 != nil {
-				err = fmt.Errorf("Reading value of %s failed: Invalid BOOL/ALARM/ACTION value: %s", iseID, strval)
-				return
-			}
+	// parse result
+	result := make([]Value, len(objs))
+	line := 0
+	for idx := range objs {
+		// unexpected end of response?
+		if line >= len(resp) || (resp[line] == "OK" && line+2 >= len(resp)) {
+			return nil, errors.New("Reading object values failed: Unexpected end of response")
 		}
 
-	case "INTEGER":
-		fallthrough
-	case "ENUM":
-		if strval == "" {
-			value = 0
-			uncertain = true
-		} else {
-			tmp, err0 := strconv.ParseInt(strval, 10, 32)
-			if err0 != nil {
-				err = fmt.Errorf("Reading value of %s failed: Invalid ENUM value: %s", iseID, strval)
-				return
-			}
-			value = int(tmp)
+		// HM script error?
+		if resp[line] != "OK" {
+			result[idx].Err = errors.New(resp[line])
+			line++
+			continue
 		}
 
-	case "FLOAT":
-		if strval == "" {
-			value = 0.0
-			uncertain = true
-		} else {
-			value, err0 = strconv.ParseFloat(strval, 64)
-			if err0 != nil {
-				err = fmt.Errorf("Reading value of %s failed: Invalid FLOAT value: %s", iseID, strval)
-				return
-			}
+		// parse timestamp
+		sec, err := strconv.ParseInt(resp[line+1], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("Reading value of %s failed: Invalid timestamp: %s", objs[idx].ISEID, resp[line+1])
+		}
+		ts := time.Unix(sec, 0)
+		result[idx].Timestamp = ts
+		// uncertain?
+		if sec == 0 {
+			result[idx].Uncertain = true
 		}
 
-	case "STRING":
-		value = strval
+		// parse value
+		strval, err := url.PathUnescape(resp[line+2])
+		if err != nil {
+			return nil, fmt.Errorf("Reading value of %s failed: Invalid percent encoding: %s", objs[idx].ISEID, strval)
+		}
+		switch objs[idx].Type {
+		case "BOOL":
+			fallthrough
+		case "ALARM":
+			fallthrough
+		case "ACTION":
+			if strval == "" {
+				result[idx].Value = false
+				result[idx].Uncertain = true
+			} else {
+				value, err := strconv.ParseBool(strval)
+				if err != nil {
+					return nil, fmt.Errorf("Reading value of %s failed: Invalid BOOL/ALARM/ACTION value: %s", objs[idx].ISEID, strval)
+				}
+				result[idx].Value = value
+			}
 
-	default:
-		err = fmt.Errorf("Reading value of %s failed: Unsupported type: %s", iseID, typeStr)
-		return
-	}
+		case "INTEGER":
+			fallthrough
+		case "ENUM":
+			if strval == "" {
+				result[idx].Value = 0
+				result[idx].Uncertain = true
+			} else {
+				tmp, err := strconv.ParseInt(strval, 10, 32)
+				if err != nil {
+					return nil, fmt.Errorf("Reading value of %s failed: Invalid INTEGER/ENUM value: %s", objs[idx].ISEID, strval)
+				}
+				result[idx].Value = int(tmp)
+			}
 
-	// parse timestamp
-	sec, err0 := strconv.ParseInt(resp[1], 10, 64)
-	if err0 != nil {
-		err = fmt.Errorf("Reading value of %s failed: Invalid timestamp: %s", iseID, resp[1])
-		return
+		case "FLOAT":
+			if strval == "" {
+				result[idx].Value = 0.0
+				result[idx].Uncertain = true
+			} else {
+				value, err := strconv.ParseFloat(strval, 64)
+				if err != nil {
+					return nil, fmt.Errorf("Reading value of %s failed: Invalid FLOAT value: %s", objs[idx].ISEID, strval)
+				}
+				result[idx].Value = value
+			}
+
+		case "STRING":
+			result[idx].Value = strval
+
+		default:
+			return nil, fmt.Errorf("Reading value of %s failed: Unsupported type: %s", objs[idx].ISEID, objs[idx].Type)
+		}
+		line += 3
 	}
-	timestamp = time.Unix(sec, 0)
-	if timestamp.Unix() == 0 {
-		uncertain = true
-	}
-	return
+	return result, nil
 }
 
 // WriteValue sets the value of a ReGaDOM object.
-func (sc *Client) WriteValue(iseID, typeStr string, value interface{}) error {
-	scriptLog.Debugf("Writing value %v to object %s", value, iseID)
+func (sc *Client) WriteValue(obj ValObjDef, value interface{}) error {
+	scriptLog.Debugf("Writing value %v to object %s", value, obj.ISEID)
 
 	// convert value
 	var strval string
-	switch typeStr {
+	switch obj.Type {
 	case "BOOL":
 		fallthrough
 	case "ALARM":
@@ -637,7 +713,7 @@ func (sc *Client) WriteValue(iseID, typeStr string, value interface{}) error {
 	case "ACTION":
 		b, ok := value.(bool)
 		if !ok {
-			return fmt.Errorf("Writing of object %s failed: Invalid type for BOOL/ALARM/ACTION: %#v", iseID, value)
+			return fmt.Errorf("Writing of object %s failed: Invalid type for BOOL/ALARM/ACTION: %#v", obj.ISEID, value)
 		}
 		strval = fmt.Sprint(b)
 
@@ -646,14 +722,14 @@ func (sc *Client) WriteValue(iseID, typeStr string, value interface{}) error {
 	case "ENUM":
 		i, ok := value.(int)
 		if !ok {
-			return fmt.Errorf("Writing of object %s failed: Invalid type for INTEGER/ENUM: %#v", iseID, value)
+			return fmt.Errorf("Writing of object %s failed: Invalid type for INTEGER/ENUM: %#v", obj.ISEID, value)
 		}
 		strval = fmt.Sprint(i)
 
 	case "FLOAT":
 		f, ok := value.(float64)
 		if !ok {
-			return fmt.Errorf("Writing of object %s failed: Invalid type for FLOAT: %#v", iseID, value)
+			return fmt.Errorf("Writing of object %s failed: Invalid type for FLOAT: %#v", obj.ISEID, value)
 		}
 		// 6 decimal places are supported
 		strval = fmt.Sprintf("%f", f)
@@ -661,36 +737,40 @@ func (sc *Client) WriteValue(iseID, typeStr string, value interface{}) error {
 	case "STRING":
 		s, ok := value.(string)
 		if !ok {
-			return fmt.Errorf("Writing of object %s failed: Invalid type for STRING: %#v", iseID, value)
+			return fmt.Errorf("Writing of object %s failed: Invalid type for STRING: %#v", obj.ISEID, value)
 		}
 		strval = strconv.Quote(s)
 
 	default:
-		return fmt.Errorf("Writing of object %s failed: Unsupported type: %s", iseID, typeStr)
+		return fmt.Errorf("Writing of object %s failed: Unsupported type: %s", obj.ISEID, obj.Type)
 	}
 
 	// execute script
-	resp, err := sc.ExecuteTempl(writeValueTempl, map[string]interface{}{"ISEID": iseID, "Value": strval})
+	resp, err := sc.ExecuteTempl(writeValueTempl, map[string]interface{}{"ISEID": obj.ISEID, "Value": strval})
 	if err != nil {
-		return fmt.Errorf("Writing of object %s failed: %v", iseID, err)
+		return fmt.Errorf("Writing of object %s failed: %v", obj.ISEID, err)
 	}
 	if len(resp) != 1 {
-		return fmt.Errorf("Writing of object %s failed: Expected one response line", iseID)
+		return fmt.Errorf("Writing of object %s failed: Expected one response line", obj.ISEID)
 	}
 	if resp[0] != "OK" {
-		return fmt.Errorf("Writing of object %s failed: HM script signals error: %s", iseID, resp[0])
+		return fmt.Errorf("Writing of object %s failed: HM script signals error: %s", obj.ISEID, resp[0])
 	}
 	return nil
 }
 
-// ReadSysVar reads the value of a system variable.
-func (sc *Client) ReadSysVar(sysVar *SysVarDef) (interface{}, time.Time, bool, error) {
-	return sc.ReadValue(sysVar.ISEID, sysVar.Type)
+// ReadSysVars reads the values of system variables.
+func (sc *Client) ReadSysVars(sysVars SysVarDefs) ([]Value, error) {
+	valObjs := make([]ValObjDef, len(sysVars))
+	for idx, sysVar := range sysVars {
+		valObjs[idx] = ValObjDef{sysVar.ISEID, sysVar.Type}
+	}
+	return sc.ReadValues(valObjs)
 }
 
 // WriteSysVar sets the value of a system variable.
 func (sc *Client) WriteSysVar(sysVar *SysVarDef, value interface{}) error {
-	return sc.WriteValue(sysVar.ISEID, sysVar.Type, value)
+	return sc.WriteValue(ValObjDef{sysVar.ISEID, sysVar.Type}, value)
 }
 
 // Programs retrieves all programs from the CCU.
