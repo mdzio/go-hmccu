@@ -2,6 +2,7 @@ package itf
 
 import (
 	"fmt"
+	"github.com/mdzio/go-hmccu/binrpc"
 	"github.com/mdzio/go-hmccu/model"
 
 	"github.com/mdzio/go-hmccu/xmlrpc"
@@ -50,7 +51,46 @@ func NewHandler(receiver Receiver) *Handler {
 	}
 	h.SystemMethods()
 
-	h.HandleFunc("event", func(args *model.Value) (*model.Value, error) {
+	h.HandleFunc("event", eventHandleFunc(h.receiver))
+
+	// attention: this implementation returns always an empty device list.
+	h.HandleFunc("listDevices", listDevicesHandleFunc())
+
+	h.HandleFunc("newDevices", newDevicesHandleFunc(h.receiver))
+
+	h.HandleFunc("deleteDevices", deleteDevicesHandleFunc(h.receiver))
+
+	h.HandleFunc("updateDevice", updateDevicesHandleFunc(h.receiver))
+
+	h.HandleFunc("replaceDevice", replaceDevicesHandleFunc(h.receiver))
+
+	h.HandleFunc("readdedDevice", readdedDevicesHandleFunc(h.receiver))
+
+	return h
+}
+
+// BinRpcHandler forwards CUxD BIN-RPC interface calls to the receiver.
+// CUxD does not call any method after init has been called. Therefore
+// only event callbacks are configured.
+type BinRpcHandler struct {
+	binrpc.Handler
+	receiver Receiver
+}
+
+// NewRpcHandler creates a new CUxD Bin-RPC handler.
+func NewRpcHandler(receiver Receiver) *BinRpcHandler {
+	h := &BinRpcHandler{
+		receiver: receiver,
+	}
+	h.SystemMethods()
+
+	h.HandleFunc("event", eventHandleFunc(h.receiver))
+
+	return h
+}
+
+func eventHandleFunc(r Receiver) func(args *model.Value) (*model.Value, error) {
+	return func(args *model.Value) (*model.Value, error) {
 		q := model.Q(args)
 		if len(q.Slice()) != 4 {
 			return nil, fmt.Errorf("Expected 4 arguments for event method: %d", len(q.Slice()))
@@ -63,15 +103,16 @@ func NewHandler(receiver Receiver) *Handler {
 			return nil, fmt.Errorf("Invalid argument for event method: %v", q.Err())
 		}
 		svrLog.Debugf("Call of method event received: %s, %s, %s, %v", interfaceID, address, valueKey, value)
-		err := h.receiver.Event(interfaceID, address, valueKey, value)
+		err := r.Event(interfaceID, address, valueKey, value)
 		if err != nil {
 			return nil, err
 		}
 		return &model.Value{FlatString: ""}, nil
-	})
+	}
+}
 
-	// attention: this implementation returns always an empty device list.
-	h.HandleFunc("listDevices", func(args *model.Value) (*model.Value, error) {
+func listDevicesHandleFunc() func(args *model.Value) (*model.Value, error) {
+	return func(args *model.Value) (*model.Value, error) {
 		q := model.Q(args)
 		if len(q.Slice()) != 1 {
 			return nil, fmt.Errorf("Expected one argument for listDevices method: %d", len(q.Slice()))
@@ -82,9 +123,11 @@ func NewHandler(receiver Receiver) *Handler {
 		}
 		svrLog.Debugf("Call of method listDevices received: %s", interfaceID)
 		return &model.Value{Array: &model.Array{Data: []*model.Value{}}}, nil
-	})
+	}
+}
 
-	h.HandleFunc("newDevices", func(args *model.Value) (*model.Value, error) {
+func newDevicesHandleFunc(r Receiver) func(args *model.Value) (*model.Value, error) {
+	return func(args *model.Value) (*model.Value, error) {
 		q := model.Q(args)
 		if len(q.Slice()) != 2 {
 			return nil, fmt.Errorf("Expected 2 arguments for newDevices method: %d", len(q.Slice()))
@@ -104,14 +147,16 @@ func NewHandler(receiver Receiver) *Handler {
 			}
 			descr = append(descr, d)
 		}
-		err := h.receiver.NewDevices(interfaceID, descr)
+		err := r.NewDevices(interfaceID, descr)
 		if err != nil {
 			return nil, err
 		}
 		return &model.Value{FlatString: ""}, nil
-	})
+	}
+}
 
-	h.HandleFunc("deleteDevices", func(args *model.Value) (*model.Value, error) {
+func deleteDevicesHandleFunc(r Receiver) func(args *model.Value) (*model.Value, error) {
+	return func(args *model.Value) (*model.Value, error) {
 		q := model.Q(args)
 		if len(q.Slice()) != 2 {
 			return nil, fmt.Errorf("Expected 2 arguments for deleteDevices method: %d", len(q.Slice()))
@@ -126,14 +171,16 @@ func NewHandler(receiver Receiver) *Handler {
 			return nil, fmt.Errorf("Invalid argument(s) for deleteDevices method: %v", q.Err())
 		}
 		svrLog.Debugf("Call of method deleteDevices received: %s, %v", interfaceID, addresses)
-		err := h.receiver.DeleteDevices(interfaceID, addresses)
+		err := r.DeleteDevices(interfaceID, addresses)
 		if err != nil {
 			return nil, err
 		}
 		return &model.Value{FlatString: ""}, nil
-	})
+	}
+}
 
-	h.HandleFunc("updateDevice", func(args *model.Value) (*model.Value, error) {
+func updateDevicesHandleFunc(r Receiver) func(args *model.Value) (*model.Value, error) {
+	return func(args *model.Value) (*model.Value, error) {
 		q := model.Q(args)
 		if len(q.Slice()) != 3 {
 			return nil, fmt.Errorf("Expected 3 arguments for updateDevice method: %d", len(q.Slice()))
@@ -145,14 +192,16 @@ func NewHandler(receiver Receiver) *Handler {
 			return nil, fmt.Errorf("Invalid argument(s) for updateDevice method: %v", q.Err())
 		}
 		svrLog.Debugf("Call of method updateDevice received: %s, %s, %d", interfaceID, address, hint)
-		err := h.receiver.UpdateDevice(interfaceID, address, hint)
+		err := r.UpdateDevice(interfaceID, address, hint)
 		if err != nil {
 			return nil, err
 		}
 		return &model.Value{FlatString: ""}, nil
-	})
+	}
+}
 
-	h.HandleFunc("replaceDevice", func(args *model.Value) (*model.Value, error) {
+func replaceDevicesHandleFunc(r Receiver) func(args *model.Value) (*model.Value, error) {
+	return func(args *model.Value) (*model.Value, error) {
 		q := model.Q(args)
 		if len(q.Slice()) != 3 {
 			return nil, fmt.Errorf("Expected 3 arguments for replaceDevice method: %d", len(q.Slice()))
@@ -164,14 +213,16 @@ func NewHandler(receiver Receiver) *Handler {
 			return nil, fmt.Errorf("Invalid argument(s) for replaceDevice method: %v", q.Err())
 		}
 		svrLog.Debugf("Call of method replaceDevice received: %s, %s, %s", interfaceID, oldDeviceAddress, newDeviceAddress)
-		err := h.receiver.ReplaceDevice(interfaceID, oldDeviceAddress, newDeviceAddress)
+		err := r.ReplaceDevice(interfaceID, oldDeviceAddress, newDeviceAddress)
 		if err != nil {
 			return nil, err
 		}
 		return &model.Value{FlatString: ""}, nil
-	})
+	}
+}
 
-	h.HandleFunc("readdedDevice", func(args *model.Value) (*model.Value, error) {
+func readdedDevicesHandleFunc(r Receiver) func(args *model.Value) (*model.Value, error) {
+	return func(args *model.Value) (*model.Value, error) {
 		q := model.Q(args)
 		if len(q.Slice()) != 2 {
 			return nil, fmt.Errorf("Expected 2 arguments for readdedDevice method: %d", len(q.Slice()))
@@ -186,12 +237,10 @@ func NewHandler(receiver Receiver) *Handler {
 			return nil, fmt.Errorf("Invalid argument(s) for readdedDevice method: %v", q.Err())
 		}
 		svrLog.Debugf("Call of method readdedDevice received: %s, %v", interfaceID, addresses)
-		err := h.receiver.ReaddedDevice(interfaceID, addresses)
+		err := r.ReaddedDevice(interfaceID, addresses)
 		if err != nil {
 			return nil, err
 		}
 		return &model.Value{FlatString: ""}, nil
-	})
-
-	return h
+	}
 }

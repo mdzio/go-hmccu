@@ -217,6 +217,9 @@ func (i *Interconnector) callbackReceived(interfaceID string) {
 
 // Event implements interface hmccu.Receiver.
 func (i *Interconnector) Event(interfaceID, address, valueKey string, value interface{}) error {
+	if !strings.HasPrefix(interfaceID, i.IDPrefix) {
+		interfaceID = i.IDPrefix + interfaceID
+	}
 	i.callbackReceived(interfaceID)
 
 	// discard pong event
