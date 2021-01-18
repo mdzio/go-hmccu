@@ -26,6 +26,7 @@ type Handler struct {
 }
 
 func (h *Handler) ServeTCP(conn net.Conn) {
+	defer conn.Close()
 	svrLog.Debug("Request received from %s", conn.RemoteAddr)
 
 	// decode request
