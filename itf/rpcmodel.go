@@ -1,6 +1,6 @@
 package itf
 
-import "github.com/mdzio/go-hmccu/xmlrpc"
+import "github.com/mdzio/go-hmccu/itf/xmlrpc"
 
 // DeviceDescription describes a HomeMatic device.
 type DeviceDescription struct {

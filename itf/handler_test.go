@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mdzio/go-hmccu/xmlrpc"
+	"github.com/mdzio/go-hmccu/itf/xmlrpc"
 )
 
 type receiver struct {

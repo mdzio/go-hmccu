@@ -1,38 +1,26 @@
-/*
-Environment variables for integration tests:
-	CCU_ADDRESS:
-		hostname or IP address of the test CCU2
-	LOG_LEVEL:
-		off, error, warning, info, debug, trace
-*/
 package xmlrpc
 
 import (
-	"os"
 	"testing"
 
-	"github.com/mdzio/go-logging"
+	"github.com/mdzio/go-lib/testutil"
 )
 
-func init() {
-	var l logging.LogLevel
-	err := l.Set(os.Getenv("LOG_LEVEL"))
-	if err == nil {
-		logging.SetLevel(l)
-	}
-}
+// Test configuration (environment variables)
+const (
+	// LOG_LEVEL: OFF, ERROR, WARNING, INFO, DEBUG, TRACE
 
-func getXMLRPCAddr(t *testing.T) string {
-	ccuAddr := os.Getenv("CCU_ADDRESS")
-	if len(ccuAddr) == 0 {
-		t.Skip("environment variable CCU_ADDRESS not set")
-	}
+	// hostname or IP address of the test CCU, e.g. 192.168.0.10
+	ccuAddress = "CCU_ADDRESS"
+)
+
+func itfAddress(t *testing.T) string {
 	// use BidCos-RF XML-RPC interface
-	return "http://" + ccuAddr + ":2001"
+	return "http://" + testutil.Config(t, ccuAddress) + ":2001"
 }
 
 func TestClient_Call(t *testing.T) {
-	ccuAddress := getXMLRPCAddr(t)
+	ccuAddress := itfAddress(t)
 	c := Client{Addr: ccuAddress}
 
 	d, err := c.Call("unknownMethod", []*Value{})

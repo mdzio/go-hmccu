@@ -1,17 +1,13 @@
 package script
 
 import (
-	"os"
 	"testing"
 
-	"github.com/mdzio/go-logging"
+	"github.com/mdzio/go-lib/testutil"
 )
 
-// Test configuration (environment variables):
 const (
-	// log level, e.g. TRACE
-	logLevel = "LOG_LEVEL"
-
+	// Test configuration (environment variables)
 	// address of the test CCU, e.g. 192.168.0.10
 	ccuAddress = "CCU_ADDRESS"
 
@@ -23,24 +19,8 @@ const (
 	sysVarString = "Sysvar string"
 )
 
-func init() {
-	var l logging.LogLevel
-	err := l.Set(os.Getenv(logLevel))
-	if err == nil {
-		logging.SetLevel(l)
-	}
-}
-
-func config(t *testing.T, name string) string {
-	v := os.Getenv(name)
-	if len(v) == 0 {
-		t.Skip("env variable " + name + " not set")
-	}
-	return v
-}
-
 func TestScriptClient_Execute(t *testing.T) {
-	cln := &Client{Addr: config(t, ccuAddress)}
+	cln := &Client{Addr: testutil.Config(t, ccuAddress)}
 
 	res, err := cln.Execute(`WriteLine("Hello");`)
 	if err != nil {
@@ -70,7 +50,7 @@ func TestScriptClient_Execute(t *testing.T) {
 }
 
 func TestScriptClient_Rooms(t *testing.T) {
-	cln := &Client{Addr: config(t, ccuAddress)}
+	cln := &Client{Addr: testutil.Config(t, ccuAddress)}
 
 	_, err := cln.Rooms()
 	if err != nil {
@@ -79,7 +59,7 @@ func TestScriptClient_Rooms(t *testing.T) {
 }
 
 func TestScriptClient_Functions(t *testing.T) {
-	cln := &Client{Addr: config(t, ccuAddress)}
+	cln := &Client{Addr: testutil.Config(t, ccuAddress)}
 
 	_, err := cln.Functions()
 	if err != nil {
@@ -88,7 +68,7 @@ func TestScriptClient_Functions(t *testing.T) {
 }
 
 func TestScriptClient_DevicesAndChannels(t *testing.T) {
-	cln := &Client{Addr: config(t, ccuAddress)}
+	cln := &Client{Addr: testutil.Config(t, ccuAddress)}
 
 	ds, err := cln.Devices()
 	if err != nil {
@@ -108,7 +88,7 @@ func TestScriptClient_DevicesAndChannels(t *testing.T) {
 }
 
 func TestScriptClient_Programs(t *testing.T) {
-	cln := &Client{Addr: config(t, ccuAddress)}
+	cln := &Client{Addr: testutil.Config(t, ccuAddress)}
 
 	ps, err := cln.Programs()
 	if err != nil {
@@ -120,7 +100,7 @@ func TestScriptClient_Programs(t *testing.T) {
 }
 
 func TestScriptClient_ReadWriteSysVarTypes(t *testing.T) {
-	cln := &Client{Addr: config(t, ccuAddress)}
+	cln := &Client{Addr: testutil.Config(t, ccuAddress)}
 	svs, err := cln.SystemVariables()
 	if err != nil {
 		t.Fatal(err)
@@ -160,7 +140,7 @@ func TestScriptClient_ReadWriteSysVarTypes(t *testing.T) {
 }
 
 func TestScriptClient_ReadMultipleSysVars(t *testing.T) {
-	cln := &Client{Addr: config(t, ccuAddress)}
+	cln := &Client{Addr: testutil.Config(t, ccuAddress)}
 	all, err := cln.SystemVariables()
 	if err != nil {
 		t.Fatal(err)
@@ -190,7 +170,7 @@ func TestScriptClient_ReadMultipleSysVars(t *testing.T) {
 }
 
 func TestScriptClient_ReadDeviceValue(t *testing.T) {
-	cln := &Client{Addr: config(t, ccuAddress)}
+	cln := &Client{Addr: testutil.Config(t, ccuAddress)}
 
 	res, err := cln.ReadValues([]ValObjDef{{"BidCos-RF.BidCoS-RF:1.PRESS_SHORT", "ACTION"}})
 	if err != nil {

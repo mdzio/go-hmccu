@@ -3,8 +3,8 @@ package itf
 import (
 	"fmt"
 
+	"github.com/mdzio/go-hmccu/itf/xmlrpc"
 	"github.com/mdzio/go-logging"
-	"github.com/mdzio/go-hmccu/xmlrpc"
 )
 
 var svrLog = logging.Get("itf-server")

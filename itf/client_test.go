@@ -1,71 +1,35 @@
-/*
-Environment variables for integration tests:
-	CCU_ADDRESS:
-		hostname or IP address of the test CCU2
-	LOCAL_ADDRESS:
-		hostname or IP address of the test machine (for callbacks)
-	HMLCSW1_DEVICE:
-		device address of a HM-LC-Sw1 (rf switch actor)
-		attention: state will be changed!
-	HMESPMSW1_DEVICE:
-		device address of a HM-ES-PMSw1 (rf switch actor with meter)
-		attention: TRANSMIT_TRY_MAX from parameter set MASTER will be changed!
-	LOG_LEVEL:
-		off, error, warning, info, debug, trace
-*/
 package itf
 
 import (
-	"os"
 	"reflect"
 	"testing"
 
 	"github.com/mdzio/go-lib/any"
-	"github.com/mdzio/go-logging"
+	"github.com/mdzio/go-lib/testutil"
 )
 
-func init() {
-	var l logging.LogLevel
-	err := l.Set(os.Getenv("LOG_LEVEL"))
-	if err == nil {
-		logging.SetLevel(l)
-	}
-}
+// Test configuration (environment variables)
+const (
+	// LOG_LEVEL: OFF, ERROR, WARNING, INFO, DEBUG, TRACE
 
-func getXMLRPCAddr(t *testing.T) string {
-	addr := os.Getenv("CCU_ADDRESS")
-	if len(addr) == 0 {
-		t.Skip("environment variable CCU_ADDRESS not set")
-	}
-	return "http://" + addr + ":2001"
-}
+	// hostname or IP address of the test CCU, e.g. 192.168.0.10
+	ccuAddress = "CCU_ADDRESS"
 
-func getLocalAddr(t *testing.T) string {
-	addr := os.Getenv("LOCAL_ADDRESS")
-	if len(addr) == 0 {
-		t.Skip("environment variable LOCAL_ADDRESS not set")
-	}
-	return "http://" + addr
-}
+	// device address of a HM-LC-Sw1 (rf switch actor) ATTENTION: state will be
+	// changed!
+	hmlcsw1Device = "HMLCSW1_DEVICE"
 
-func getHMLCSW1Device(t *testing.T) string {
-	hmlcsw1Device := os.Getenv("HMLCSW1_DEVICE")
-	if len(hmlcsw1Device) == 0 {
-		t.Skip("environment variable HMLCSW1_DEVICE not set")
-	}
-	return hmlcsw1Device
-}
+	// device address of a HM-ES-PMSw1 (rf switch actor with meter) ATTENTION:
+	// TRANSMIT_TRY_MAX from parameter set MASTER will be changed!
+	hmespmsw1Device = "HMESPMSW1_DEVICE"
+)
 
-func getHMESPMSW1Device(t *testing.T) string {
-	hmlcsw1Device := os.Getenv("HMESPMSW1_DEVICE")
-	if len(hmlcsw1Device) == 0 {
-		t.Skip("environment variable HMESPMSW1_DEVICE not set")
-	}
-	return hmlcsw1Device
+func itfAddress(t *testing.T) string {
+	return "http://" + testutil.Config(t, ccuAddress) + ":2001"
 }
 
 func TestClient_GetDeviceDescription(t *testing.T) {
-	c := NewClient(getXMLRPCAddr(t))
+	c := NewClient(itfAddress(t))
 
 	d, err := c.GetDeviceDescription("BidCoS-RF:0")
 	if err != nil {
@@ -86,7 +50,7 @@ func TestClient_GetDeviceDescription(t *testing.T) {
 }
 
 func TestClient_ListDevices(t *testing.T) {
-	c := NewClient(getXMLRPCAddr(t))
+	c := NewClient(itfAddress(t))
 
 	_, err := c.ListDevices()
 	if err != nil {
@@ -95,7 +59,7 @@ func TestClient_ListDevices(t *testing.T) {
 }
 
 func TestClient_GetParamsetDescription(t *testing.T) {
-	c := NewClient(getXMLRPCAddr(t))
+	c := NewClient(itfAddress(t))
 
 	ps, err := c.GetParamsetDescription("BidCoS-RF:1", "VALUES")
 	if err != nil {
@@ -119,9 +83,9 @@ func TestClient_GetParamsetDescription(t *testing.T) {
 }
 
 func TestClient_GetParamset(t *testing.T) {
-	c := NewClient(getXMLRPCAddr(t))
+	c := NewClient(itfAddress(t))
 
-	ps, err := c.GetParamset(getHMLCSW1Device(t)+":1", "VALUES")
+	ps, err := c.GetParamset(testutil.Config(t, hmlcsw1Device)+":1", "VALUES")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,9 +104,9 @@ func TestClient_GetParamset(t *testing.T) {
 }
 
 func TestClient_GetSetParamsetMaster(t *testing.T) {
-	c := NewClient(getXMLRPCAddr(t))
+	c := NewClient(itfAddress(t))
 
-	ps, err := c.GetParamset(getHMESPMSW1Device(t)+":1", "MASTER")
+	ps, err := c.GetParamset(testutil.Config(t, hmespmsw1Device)+":1", "MASTER")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +117,7 @@ func TestClient_GetSetParamsetMaster(t *testing.T) {
 	}
 
 	err = c.PutParamset(
-		getHMESPMSW1Device(t)+":1",
+		testutil.Config(t, hmespmsw1Device)+":1",
 		"MASTER",
 		map[string]interface{}{"TRANSMIT_TRY_MAX": tryMax + 1},
 	)
@@ -163,16 +127,16 @@ func TestClient_GetSetParamsetMaster(t *testing.T) {
 
 	// restore previous value
 	err = c.PutParamset(
-		getHMESPMSW1Device(t)+":1",
+		testutil.Config(t, hmespmsw1Device)+":1",
 		"MASTER",
 		map[string]interface{}{"TRANSMIT_TRY_MAX": tryMax},
 	)
 }
 
 func TestClient_GetSetValue(t *testing.T) {
-	c := NewClient(getXMLRPCAddr(t))
+	c := NewClient(itfAddress(t))
 
-	val, err := c.GetValue(getHMLCSW1Device(t)+":1", "STATE")
+	val, err := c.GetValue(testutil.Config(t, hmlcsw1Device)+":1", "STATE")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,14 +145,14 @@ func TestClient_GetSetValue(t *testing.T) {
 		t.Fatal("bool expected")
 	}
 
-	err = c.SetValue(getHMLCSW1Device(t)+":1", "STATE", b)
+	err = c.SetValue(testutil.Config(t, hmlcsw1Device)+":1", "STATE", b)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestClient_Deinit(t *testing.T) {
-	c := NewClient(getXMLRPCAddr(t))
+	c := NewClient(itfAddress(t))
 
 	err := c.Deinit("http://unknownAddress")
 	if err != nil {

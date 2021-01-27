@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/mdzio/go-hmccu/xmlrpc"
+	"github.com/mdzio/go-hmccu/itf/xmlrpc"
 
 	"github.com/mdzio/go-logging"
 )
