@@ -1,3 +1,5 @@
+github.com/mdzio/go-lib v0.1.0 h1:dhlCb8YdEYXQ7Nh5gaLcWLoBiPoEKNrtc3LimjtM/2Q=
+github.com/mdzio/go-lib v0.1.0/go.mod h1:iT5EGniJ9KN32ynSFImmjSTOxscncRL6h6OagK/G1PY=
 github.com/mdzio/go-logging v1.0.0 h1:5ykv9QZfEEn3G8Xt2Kcq7FIXDUpXyvp9PUiqWtLDaP0=
 github.com/mdzio/go-logging v1.0.0/go.mod h1:PAR0NsQwdZiUSy/yykXTWm+kZsbYCLTkBnKgJ6O50rw=
 golang.org/x/net v0.0.0-20210119194325-5f4716e94777 h1:003p0dJM77cxMSyCPFphvZf/Y5/NXf5fzg6ufd1/Oew=
