@@ -99,8 +99,8 @@ func TestMarshalXMLValue(t *testing.T) {
 			Value{
 				Array: &Array{
 					[]*Value{
-						&Value{FlatString: "abc"},
-						&Value{I4: "4"},
+						{FlatString: "abc"},
+						{I4: "4"},
 					},
 				},
 			},
@@ -111,8 +111,8 @@ func TestMarshalXMLValue(t *testing.T) {
 			Value{
 				Array: &Array{
 					[]*Value{
-						&Value{I4: "4"},
-						&Value{
+						{I4: "4"},
+						{
 							Struct: &Struct{
 								Members: []*Member{
 									{"Field", &Value{FlatString: "abc"}},
@@ -260,9 +260,9 @@ func TestMarshal(t *testing.T) {
 											&Value{
 												Array: &Array{
 													[]*Value{
-														&Value{FlatString: "LINK"},
-														&Value{FlatString: "MASTER"},
-														&Value{FlatString: "VALUES"},
+														{FlatString: "LINK"},
+														{FlatString: "MASTER"},
+														{FlatString: "VALUES"},
 													},
 												},
 											},
@@ -464,8 +464,8 @@ func TestQuery_Array(t *testing.T) {
 		&Value{
 			Array: &Array{
 				[]*Value{
-					&Value{FlatString: "abc"},
-					&Value{I4: "4"},
+					{FlatString: "abc"},
+					{I4: "4"},
 				},
 			},
 		},
@@ -496,8 +496,8 @@ func TestQuery_Strings(t *testing.T) {
 		&Value{
 			Array: &Array{
 				[]*Value{
-					&Value{FlatString: "abc"},
-					&Value{String: "def"},
+					{FlatString: "abc"},
+					{String: "def"},
 				},
 			},
 		},
@@ -549,21 +549,21 @@ func TestNewValue(t *testing.T) {
 		{&Value{Double: "123.456"}, 123.456},
 		{&Value{FlatString: "abc"}, "abc"},
 		{
-			&Value{Array: &Array{[]*Value{&Value{FlatString: "abc"}}}},
+			&Value{Array: &Array{[]*Value{{FlatString: "abc"}}}},
 			[]string{"abc"},
 		},
 		{
-			&Value{Array: &Array{[]*Value{&Value{Double: "123.456"}}}},
+			&Value{Array: &Array{[]*Value{{Double: "123.456"}}}},
 			[]interface{}{123.456},
 		},
 		{
-			&Value{Struct: &Struct{[]*Member{&Member{"abc", &Value{I4: "123"}}}}},
+			&Value{Struct: &Struct{[]*Member{{"abc", &Value{I4: "123"}}}}},
 			map[string]interface{}{"abc": 123},
 		},
 		{
-			&Value{Struct: &Struct{[]*Member{&Member{
+			&Value{Struct: &Struct{[]*Member{{
 				"k",
-				&Value{Array: &Array{[]*Value{&Value{FlatString: "a"}, &Value{FlatString: "b"}}}},
+				&Value{Array: &Array{[]*Value{{FlatString: "a"}, {FlatString: "b"}}}},
 			}}}},
 			map[string]interface{}{"k": []string{"a", "b"}},
 		},

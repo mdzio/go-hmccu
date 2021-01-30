@@ -411,9 +411,7 @@ func newFaultResponse(err error) *MethodResponse {
 func newMethodResponse(value *Value) *MethodResponse {
 	return &MethodResponse{
 		Params: &Params{
-			[]*Param{
-				&Param{value},
-			},
+			[]*Param{{value}},
 		},
 	}
 }

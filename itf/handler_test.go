@@ -68,12 +68,12 @@ func TestServer(t *testing.T) {
 			"myid [ABC123 DEF456]",
 			func() (*xmlrpc.Value, error) {
 				return cln.Call("deleteDevices", []*xmlrpc.Value{
-					&xmlrpc.Value{FlatString: "myid"},
-					&xmlrpc.Value{
+					{FlatString: "myid"},
+					{
 						Array: &xmlrpc.Array{
 							Data: []*xmlrpc.Value{
-								&xmlrpc.Value{FlatString: "ABC123"},
-								&xmlrpc.Value{FlatString: "DEF456"},
+								{FlatString: "ABC123"},
+								{FlatString: "DEF456"},
 							},
 						},
 					},
@@ -84,9 +84,9 @@ func TestServer(t *testing.T) {
 			"myid ABC123 3",
 			func() (*xmlrpc.Value, error) {
 				return cln.Call("updateDevice", []*xmlrpc.Value{
-					&xmlrpc.Value{FlatString: "myid"},
-					&xmlrpc.Value{FlatString: "ABC123"},
-					&xmlrpc.Value{Int: "3"},
+					{FlatString: "myid"},
+					{FlatString: "ABC123"},
+					{Int: "3"},
 				})
 			},
 		},
@@ -94,9 +94,9 @@ func TestServer(t *testing.T) {
 			"myid ABC123 DEF456",
 			func() (*xmlrpc.Value, error) {
 				return cln.Call("replaceDevice", []*xmlrpc.Value{
-					&xmlrpc.Value{FlatString: "myid"},
-					&xmlrpc.Value{FlatString: "ABC123"},
-					&xmlrpc.Value{FlatString: "DEF456"},
+					{FlatString: "myid"},
+					{FlatString: "ABC123"},
+					{FlatString: "DEF456"},
 				})
 			},
 		},
@@ -104,12 +104,12 @@ func TestServer(t *testing.T) {
 			"myid [ABC123 DEF456]",
 			func() (*xmlrpc.Value, error) {
 				return cln.Call("readdedDevice", []*xmlrpc.Value{
-					&xmlrpc.Value{FlatString: "myid"},
-					&xmlrpc.Value{
+					{FlatString: "myid"},
+					{
 						Array: &xmlrpc.Array{
 							Data: []*xmlrpc.Value{
-								&xmlrpc.Value{FlatString: "ABC123"},
-								&xmlrpc.Value{FlatString: "DEF456"},
+								{FlatString: "ABC123"},
+								{FlatString: "DEF456"},
 							},
 						},
 					},

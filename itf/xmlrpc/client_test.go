@@ -31,7 +31,7 @@ func TestClient_Call(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	d, err = c.Call("getDeviceDescription", []*Value{&Value{FlatString: "BidCoS-RF:0"}})
+	d, err = c.Call("getDeviceDescription", []*Value{{FlatString: "BidCoS-RF:0"}})
 	if err != nil {
 		t.Fatal(err)
 	}

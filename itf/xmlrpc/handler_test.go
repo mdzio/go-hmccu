@@ -67,7 +67,7 @@ func TestServer(t *testing.T) {
 
 	cln := Client{Addr: srv.URL}
 
-	resp, err := cln.Call("echo", []*Value{&Value{Int: "123"}})
+	resp, err := cln.Call("echo", []*Value{{Int: "123"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,8 +78,8 @@ func TestServer(t *testing.T) {
 	}
 
 	resp, err = cln.Call("echo", []*Value{
-		&Value{Int: "123"},
-		&Value{String: "force error"},
+		{Int: "123"},
+		{String: "force error"},
 	})
 	if resp != nil {
 		t.Errorf("unexpected response: %v", resp)
@@ -125,10 +125,10 @@ func TestServerMulticall(t *testing.T) {
 	cln := Client{Addr: srv.URL}
 
 	resp, err := cln.Call("system.multicall", []*Value{
-		&Value{
+		{
 			Array: &Array{
 				[]*Value{
-					&Value{
+					{
 						Struct: &Struct{
 							[]*Member{
 								{
@@ -140,7 +140,7 @@ func TestServerMulticall(t *testing.T) {
 									&Value{
 										Array: &Array{
 											[]*Value{
-												&Value{
+												{
 													FlatString: "Hello world!",
 												},
 											},
@@ -150,7 +150,7 @@ func TestServerMulticall(t *testing.T) {
 							},
 						},
 					},
-					&Value{
+					{
 						Struct: &Struct{
 							[]*Member{
 								{
@@ -162,7 +162,7 @@ func TestServerMulticall(t *testing.T) {
 									&Value{
 										Array: &Array{
 											[]*Value{
-												&Value{
+												{
 													I4: "123",
 												},
 											},

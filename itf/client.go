@@ -27,7 +27,7 @@ func (c *Client) GetDeviceDescription(deviceAddress string) (*DeviceDescription,
 	clnLog.Debugf("Calling method getDeviceDescription(%s) on %s", deviceAddress, c.Addr)
 	// execute call
 	v, err := c.Call("getDeviceDescription", []*xmlrpc.Value{
-		&xmlrpc.Value{FlatString: deviceAddress},
+		{FlatString: deviceAddress},
 	})
 	if err != nil {
 		return nil, err
@@ -72,8 +72,8 @@ func (c *Client) GetParamsetDescription(deviceAddress string, paramsetType strin
 	clnLog.Debugf("Calling method getParamsetDescription(%s, %s) on %s", deviceAddress, paramsetType, c.Addr)
 	// execute call
 	v, err := c.Call("getParamsetDescription", []*xmlrpc.Value{
-		&xmlrpc.Value{FlatString: deviceAddress},
-		&xmlrpc.Value{FlatString: paramsetType},
+		{FlatString: deviceAddress},
+		{FlatString: paramsetType},
 	})
 	if err != nil {
 		return nil, err
@@ -101,8 +101,8 @@ func (c *Client) GetParamset(deviceAddress string, paramsetType string) (map[str
 	clnLog.Debugf("Calling method getParamset(%s, %s) on %s", deviceAddress, paramsetType, c.Addr)
 	// execute call
 	v, err := c.Call("getParamset", []*xmlrpc.Value{
-		&xmlrpc.Value{FlatString: deviceAddress},
-		&xmlrpc.Value{FlatString: paramsetType},
+		{FlatString: deviceAddress},
+		{FlatString: paramsetType},
 	})
 	if err != nil {
 		return nil, err
@@ -134,8 +134,8 @@ func (c *Client) PutParamset(deviceAddress string, paramsetType string, paramset
 	}
 	// execute call
 	resp, err := c.Call("putParamset", []*xmlrpc.Value{
-		&xmlrpc.Value{FlatString: deviceAddress},
-		&xmlrpc.Value{FlatString: paramsetType},
+		{FlatString: deviceAddress},
+		{FlatString: paramsetType},
 		ps,
 	})
 	if err != nil {
@@ -168,8 +168,8 @@ func (c *Client) SetValue(deviceAddress string, valueName string, value interfac
 	}
 	// execute call
 	resp, err := c.Call("setValue", []*xmlrpc.Value{
-		&xmlrpc.Value{FlatString: deviceAddress},
-		&xmlrpc.Value{FlatString: valueName},
+		{FlatString: deviceAddress},
+		{FlatString: valueName},
 		v,
 	})
 	if err != nil {
@@ -188,8 +188,8 @@ func (c *Client) GetValue(deviceAddress string, valueName string) (interface{}, 
 	clnLog.Debugf("Calling method getValue(%s, %s) on %s", deviceAddress, valueName, c.Addr)
 	// execute call
 	resp, err := c.Call("getValue", []*xmlrpc.Value{
-		&xmlrpc.Value{FlatString: deviceAddress},
-		&xmlrpc.Value{FlatString: valueName},
+		{FlatString: deviceAddress},
+		{FlatString: valueName},
 	})
 	if err != nil {
 		return nil, err
@@ -210,8 +210,8 @@ func (c *Client) Init(receiverAddress, id string) error {
 	clnLog.Debugf("Calling method init(%s, %s) on %s", receiverAddress, id, c.Addr)
 	// execute call
 	resp, err := c.Call("init", []*xmlrpc.Value{
-		&xmlrpc.Value{FlatString: receiverAddress},
-		&xmlrpc.Value{FlatString: id},
+		{FlatString: receiverAddress},
+		{FlatString: id},
 	})
 	if err != nil {
 		return err
@@ -229,7 +229,7 @@ func (c *Client) Deinit(receiverAddress string) error {
 	clnLog.Debugf("Calling method init(%s) on %s", receiverAddress, c.Addr)
 	// execute call
 	resp, err := c.Call("init", []*xmlrpc.Value{
-		&xmlrpc.Value{FlatString: receiverAddress},
+		{FlatString: receiverAddress},
 		// omit 2nd parameter
 	})
 	if err != nil {
@@ -248,7 +248,7 @@ func (c *Client) Ping(callerID string) (bool, error) {
 	clnLog.Debugf("Calling method ping(%s) on %s", callerID, c.Addr)
 	// execute call
 	resp, err := c.Call("ping", []*xmlrpc.Value{
-		&xmlrpc.Value{FlatString: callerID},
+		{FlatString: callerID},
 	})
 	if err != nil {
 		return false, err
@@ -276,9 +276,9 @@ func (c *Client) Event(interfaceID, address, valueKey string, value interface{})
 		return err
 	}
 	resp, err := c.Call("event", []*xmlrpc.Value{
-		&xmlrpc.Value{FlatString: interfaceID},
-		&xmlrpc.Value{FlatString: address},
-		&xmlrpc.Value{FlatString: valueKey},
+		{FlatString: interfaceID},
+		{FlatString: address},
+		{FlatString: valueKey},
 		v,
 	})
 	if err != nil {
