@@ -13,18 +13,14 @@ var clnLog = logging.Get("itf-client")
 
 // Client provides access to the HomeMatic XML-RPC API.
 type Client struct {
-	xmlrpc.Client
-}
-
-// NewClient creates a new Client.
-func NewClient(address string) *Client {
-	return &Client{xmlrpc.Client{Addr: address}}
+	Name string
+	xmlrpc.Caller
 }
 
 // GetDeviceDescription retrieves the device description for the specified
 // device.
 func (c *Client) GetDeviceDescription(deviceAddress string) (*DeviceDescription, error) {
-	clnLog.Debugf("Calling method getDeviceDescription(%s) on %s", deviceAddress, c.Addr)
+	clnLog.Debugf("Calling method getDeviceDescription(%s) on %s", deviceAddress, c.Name)
 	// execute call
 	v, err := c.Call("getDeviceDescription", []*xmlrpc.Value{
 		{FlatString: deviceAddress},
@@ -45,7 +41,7 @@ func (c *Client) GetDeviceDescription(deviceAddress string) (*DeviceDescription,
 
 // ListDevices retrieves the device descriptions from all devices.
 func (c *Client) ListDevices() ([]*DeviceDescription, error) {
-	clnLog.Debugf("Calling method listDevices on %s", c.Addr)
+	clnLog.Debugf("Calling method listDevices on %s", c.Name)
 	// execute call
 	v, err := c.Call("listDevices", []*xmlrpc.Value{})
 	if err != nil {
@@ -69,7 +65,7 @@ func (c *Client) ListDevices() ([]*DeviceDescription, error) {
 
 // GetParamsetDescription retrieves the paramset description from a device.
 func (c *Client) GetParamsetDescription(deviceAddress string, paramsetType string) (ParamsetDescription, error) {
-	clnLog.Debugf("Calling method getParamsetDescription(%s, %s) on %s", deviceAddress, paramsetType, c.Addr)
+	clnLog.Debugf("Calling method getParamsetDescription(%s, %s) on %s", deviceAddress, paramsetType, c.Name)
 	// execute call
 	v, err := c.Call("getParamsetDescription", []*xmlrpc.Value{
 		{FlatString: deviceAddress},
@@ -98,7 +94,7 @@ func (c *Client) GetParamsetDescription(deviceAddress string, paramsetType strin
 
 // GetParamset retrieves the specified parameter set.
 func (c *Client) GetParamset(deviceAddress string, paramsetType string) (map[string]interface{}, error) {
-	clnLog.Debugf("Calling method getParamset(%s, %s) on %s", deviceAddress, paramsetType, c.Addr)
+	clnLog.Debugf("Calling method getParamset(%s, %s) on %s", deviceAddress, paramsetType, c.Name)
 	// execute call
 	v, err := c.Call("getParamset", []*xmlrpc.Value{
 		{FlatString: deviceAddress},
@@ -126,7 +122,7 @@ func (c *Client) GetParamset(deviceAddress string, paramsetType string) (map[str
 
 // PutParamset writes the parameter set.
 func (c *Client) PutParamset(deviceAddress string, paramsetType string, paramset map[string]interface{}) error {
-	clnLog.Debugf("Calling method putParamset(%s, %s) on %s", deviceAddress, paramsetType, c.Addr)
+	clnLog.Debugf("Calling method putParamset(%s, %s) on %s", deviceAddress, paramsetType, c.Name)
 	// convert value
 	ps, err := xmlrpc.NewValue(paramset)
 	if err != nil {
@@ -160,7 +156,7 @@ func (c *Client) assertEmptyResponse(v *xmlrpc.Value) error {
 
 // SetValue sets a single value from the parameter set VALUES.
 func (c *Client) SetValue(deviceAddress string, valueName string, value interface{}) error {
-	clnLog.Debugf("Calling method setValue(%s, %s, %v) on %s", deviceAddress, valueName, value, c.Addr)
+	clnLog.Debugf("Calling method setValue(%s, %s, %v) on %s", deviceAddress, valueName, value, c.Name)
 	// convert value
 	v, err := xmlrpc.NewValue(value)
 	if err != nil {
@@ -185,7 +181,7 @@ func (c *Client) SetValue(deviceAddress string, valueName string, value interfac
 
 // GetValue gets a single value from the parameter set VALUES.
 func (c *Client) GetValue(deviceAddress string, valueName string) (interface{}, error) {
-	clnLog.Debugf("Calling method getValue(%s, %s) on %s", deviceAddress, valueName, c.Addr)
+	clnLog.Debugf("Calling method getValue(%s, %s) on %s", deviceAddress, valueName, c.Name)
 	// execute call
 	resp, err := c.Call("getValue", []*xmlrpc.Value{
 		{FlatString: deviceAddress},
@@ -207,7 +203,7 @@ func (c *Client) GetValue(deviceAddress string, valueName string) (interface{}, 
 // http://hostname[:port][/Path]. If the path is not specified, the CCU will use
 // /RPC2.
 func (c *Client) Init(receiverAddress, id string) error {
-	clnLog.Debugf("Calling method init(%s, %s) on %s", receiverAddress, id, c.Addr)
+	clnLog.Debugf("Calling method init(%s, %s) on %s", receiverAddress, id, c.Name)
 	// execute call
 	resp, err := c.Call("init", []*xmlrpc.Value{
 		{FlatString: receiverAddress},
@@ -226,7 +222,7 @@ func (c *Client) Init(receiverAddress, id string) error {
 
 // Deinit deregisters an interface. The receiverAddress should match with Init.
 func (c *Client) Deinit(receiverAddress string) error {
-	clnLog.Debugf("Calling method init(%s) on %s", receiverAddress, c.Addr)
+	clnLog.Debugf("Calling method init(%s) on %s", receiverAddress, c.Name)
 	// execute call
 	resp, err := c.Call("init", []*xmlrpc.Value{
 		{FlatString: receiverAddress},
@@ -245,7 +241,7 @@ func (c *Client) Deinit(receiverAddress string) error {
 
 // Ping triggers a pong event. Returns true on success.
 func (c *Client) Ping(callerID string) (bool, error) {
-	clnLog.Debugf("Calling method ping(%s) on %s", callerID, c.Addr)
+	clnLog.Debugf("Calling method ping(%s) on %s", callerID, c.Name)
 	// execute call
 	resp, err := c.Call("ping", []*xmlrpc.Value{
 		{FlatString: callerID},
@@ -269,7 +265,7 @@ func (c *Client) Ping(callerID string) (bool, error) {
 
 // Event sends an event.
 func (c *Client) Event(interfaceID, address, valueKey string, value interface{}) error {
-	clnLog.Debugf("Calling method event(%s, %s, %s, %v) on %s", interfaceID, address, valueKey, value, c.Addr)
+	clnLog.Debugf("Calling method event(%s, %s, %s, %v) on %s", interfaceID, address, valueKey, value, c.Name)
 	// execute call
 	v, err := xmlrpc.NewValue(value)
 	if err != nil {

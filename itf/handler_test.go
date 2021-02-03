@@ -52,7 +52,10 @@ func TestServer(t *testing.T) {
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
-	cln := NewClient(srv.URL)
+	cln := Client{
+		Name:   srv.URL,
+		Caller: &xmlrpc.Client{Addr: srv.URL},
+	}
 
 	cases := []struct {
 		want string

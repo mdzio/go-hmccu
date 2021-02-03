@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mdzio/go-hmccu/itf/xmlrpc"
 	"github.com/mdzio/go-logging"
 )
 
@@ -139,11 +140,16 @@ func (i *Interconnector) Start() {
 	i.clients = make(map[string]*RegisteredClient)
 	for _, itfType := range i.Types {
 		cfg := configs[itfType]
+		// create XML-RPC client
 		regID := i.IDPrefix + cfg.reGaHssID
 		addr := "http://" + i.CCUAddr + ":" + strconv.Itoa(cfg.port) + cfg.path
 		iLog.Infof("Creating interface client for %s, %s", addr, cfg.reGaHssID)
+		cln := &Client{
+			Name:   addr,
+			Caller: &xmlrpc.Client{Addr: addr},
+		}
 		itf := &RegisteredClient{
-			Client:          NewClient(addr),
+			Client:          cln,
 			RegistrationURL: i.ServerURL + rpcPath,
 			RegistrationID:  regID,
 			ReGaHssID:       cfg.reGaHssID,

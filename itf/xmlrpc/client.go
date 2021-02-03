@@ -17,6 +17,11 @@ import (
 // max. size of a valid response, if not specified: 10 MB
 const responseSizeLimit = 10 * 1024 * 1024
 
+// Caller is an interface for calling XML-RPC functions.
+type Caller interface {
+	Call(method string, params []*Value) (*Value, error)
+}
+
 var clnLog = logging.Get("xmlrpc-client")
 
 // Client provides access to an XML-RPC server.
@@ -25,7 +30,7 @@ type Client struct {
 	ResponseSizeLimit int64
 }
 
-// Call executes an remote procedure call.
+// Call executes an remote procedure call. Call implements Caller.
 func (c *Client) Call(method string, params []*Value) (*Value, error) {
 	clnLog.Tracef("Calling method %s on %s", method, c.Addr)
 

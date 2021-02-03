@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/mdzio/go-hmccu/itf/xmlrpc"
 	"github.com/mdzio/go-lib/any"
 	"github.com/mdzio/go-lib/testutil"
 )
@@ -24,12 +25,16 @@ const (
 	hmespmsw1Device = "HMESPMSW1_DEVICE"
 )
 
-func itfAddress(t *testing.T) string {
-	return "http://" + testutil.Config(t, ccuAddress) + ":2001"
+func newXMLTestClient(t *testing.T) *Client {
+	addr := "http://" + testutil.Config(t, ccuAddress) + ":2001"
+	return &Client{
+		Name:   addr,
+		Caller: &xmlrpc.Client{Addr: addr},
+	}
 }
 
 func TestClient_GetDeviceDescription(t *testing.T) {
-	c := NewClient(itfAddress(t))
+	c := newXMLTestClient(t)
 
 	d, err := c.GetDeviceDescription("BidCoS-RF:0")
 	if err != nil {
@@ -50,7 +55,7 @@ func TestClient_GetDeviceDescription(t *testing.T) {
 }
 
 func TestClient_ListDevices(t *testing.T) {
-	c := NewClient(itfAddress(t))
+	c := newXMLTestClient(t)
 
 	_, err := c.ListDevices()
 	if err != nil {
@@ -59,7 +64,7 @@ func TestClient_ListDevices(t *testing.T) {
 }
 
 func TestClient_GetParamsetDescription(t *testing.T) {
-	c := NewClient(itfAddress(t))
+	c := newXMLTestClient(t)
 
 	ps, err := c.GetParamsetDescription("BidCoS-RF:1", "VALUES")
 	if err != nil {
@@ -83,7 +88,7 @@ func TestClient_GetParamsetDescription(t *testing.T) {
 }
 
 func TestClient_GetParamset(t *testing.T) {
-	c := NewClient(itfAddress(t))
+	c := newXMLTestClient(t)
 
 	ps, err := c.GetParamset(testutil.Config(t, hmlcsw1Device)+":1", "VALUES")
 	if err != nil {
@@ -104,7 +109,7 @@ func TestClient_GetParamset(t *testing.T) {
 }
 
 func TestClient_GetSetParamsetMaster(t *testing.T) {
-	c := NewClient(itfAddress(t))
+	c := newXMLTestClient(t)
 
 	ps, err := c.GetParamset(testutil.Config(t, hmespmsw1Device)+":1", "MASTER")
 	if err != nil {
@@ -134,7 +139,7 @@ func TestClient_GetSetParamsetMaster(t *testing.T) {
 }
 
 func TestClient_GetSetValue(t *testing.T) {
-	c := NewClient(itfAddress(t))
+	c := newXMLTestClient(t)
 
 	val, err := c.GetValue(testutil.Config(t, hmlcsw1Device)+":1", "STATE")
 	if err != nil {
@@ -152,7 +157,7 @@ func TestClient_GetSetValue(t *testing.T) {
 }
 
 func TestClient_Deinit(t *testing.T) {
-	c := NewClient(itfAddress(t))
+	c := newXMLTestClient(t)
 
 	err := c.Deinit("http://unknownAddress")
 	if err != nil {
