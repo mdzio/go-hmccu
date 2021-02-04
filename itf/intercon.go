@@ -158,9 +158,12 @@ func (i *Interconnector) Start() {
 		i.clients[regID] = itf
 	}
 
-	// register XMLRPC handler
-	handler := NewHandler(i)
-	http.Handle(rpcPath, handler)
+	// HM RPC dispatcher
+	dispatcher := NewDispatcher(i)
+
+	// register XML-RPC handler at the HTTP server
+	httpHandler := &xmlrpc.Handler{Dispatcher: dispatcher}
+	http.Handle(rpcPath, httpHandler)
 
 	// register at the CCU interfaces
 	for _, c := range i.clients {

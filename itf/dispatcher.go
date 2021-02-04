@@ -32,24 +32,16 @@ type Receiver interface {
 	ReaddedDevice(interfaceID string, deletedAddresses []string) error
 }
 
-// Handler forwards HM XML-RPC interface calls to the receiver. After calling
-// init on BidCos-RF normally following callbacks happen: system.listMethods,
-// listDevices, newDevices and system.multicall with event's. Attention:
-// listDevices is not forwarded to the receiver and returns always an empty
-// device list to the CCU.
-type Handler struct {
-	xmlrpc.Handler
-	receiver Receiver
-}
+// NewDispatcher creates a new Dispatcher with HM specific RPC functions (e.g.
+// event), which forwards calls to a Receiver. After calling init on BidCos-RF
+// normally following callbacks happen: system.listMethods, listDevices,
+// newDevices and system.multicall with event's. Attention: listDevices is not
+// forwarded to the receiver and returns always an empty device list to the CCU.
+func NewDispatcher(r Receiver) *xmlrpc.Dispatcher {
+	d := &xmlrpc.Dispatcher{}
+	d.SystemMethods()
 
-// NewHandler creates a new HM XML-RPC handler.
-func NewHandler(receiver Receiver) *Handler {
-	h := &Handler{
-		receiver: receiver,
-	}
-	h.SystemMethods()
-
-	h.HandleFunc("event", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
+	d.HandleFunc("event", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
 		q := xmlrpc.Q(args)
 		if len(q.Slice()) != 4 {
 			return nil, fmt.Errorf("Expected 4 arguments for event method: %d", len(q.Slice()))
@@ -62,7 +54,7 @@ func NewHandler(receiver Receiver) *Handler {
 			return nil, fmt.Errorf("Invalid argument for event method: %v", q.Err())
 		}
 		svrLog.Debugf("Call of method event received: %s, %s, %s, %v", interfaceID, address, valueKey, value)
-		err := h.receiver.Event(interfaceID, address, valueKey, value)
+		err := r.Event(interfaceID, address, valueKey, value)
 		if err != nil {
 			return nil, err
 		}
@@ -70,7 +62,7 @@ func NewHandler(receiver Receiver) *Handler {
 	})
 
 	// attention: this implementation returns always an empty device list.
-	h.HandleFunc("listDevices", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
+	d.HandleFunc("listDevices", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
 		q := xmlrpc.Q(args)
 		if len(q.Slice()) != 1 {
 			return nil, fmt.Errorf("Expected one argument for listDevices method: %d", len(q.Slice()))
@@ -83,7 +75,7 @@ func NewHandler(receiver Receiver) *Handler {
 		return &xmlrpc.Value{Array: &xmlrpc.Array{Data: []*xmlrpc.Value{}}}, nil
 	})
 
-	h.HandleFunc("newDevices", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
+	d.HandleFunc("newDevices", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
 		q := xmlrpc.Q(args)
 		if len(q.Slice()) != 2 {
 			return nil, fmt.Errorf("Expected 2 arguments for newDevices method: %d", len(q.Slice()))
@@ -103,14 +95,14 @@ func NewHandler(receiver Receiver) *Handler {
 			}
 			descr = append(descr, d)
 		}
-		err := h.receiver.NewDevices(interfaceID, descr)
+		err := r.NewDevices(interfaceID, descr)
 		if err != nil {
 			return nil, err
 		}
 		return &xmlrpc.Value{FlatString: ""}, nil
 	})
 
-	h.HandleFunc("deleteDevices", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
+	d.HandleFunc("deleteDevices", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
 		q := xmlrpc.Q(args)
 		if len(q.Slice()) != 2 {
 			return nil, fmt.Errorf("Expected 2 arguments for deleteDevices method: %d", len(q.Slice()))
@@ -125,14 +117,14 @@ func NewHandler(receiver Receiver) *Handler {
 			return nil, fmt.Errorf("Invalid argument(s) for deleteDevices method: %v", q.Err())
 		}
 		svrLog.Debugf("Call of method deleteDevices received: %s, %v", interfaceID, addresses)
-		err := h.receiver.DeleteDevices(interfaceID, addresses)
+		err := r.DeleteDevices(interfaceID, addresses)
 		if err != nil {
 			return nil, err
 		}
 		return &xmlrpc.Value{FlatString: ""}, nil
 	})
 
-	h.HandleFunc("updateDevice", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
+	d.HandleFunc("updateDevice", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
 		q := xmlrpc.Q(args)
 		if len(q.Slice()) != 3 {
 			return nil, fmt.Errorf("Expected 3 arguments for updateDevice method: %d", len(q.Slice()))
@@ -144,14 +136,14 @@ func NewHandler(receiver Receiver) *Handler {
 			return nil, fmt.Errorf("Invalid argument(s) for updateDevice method: %v", q.Err())
 		}
 		svrLog.Debugf("Call of method updateDevice received: %s, %s, %d", interfaceID, address, hint)
-		err := h.receiver.UpdateDevice(interfaceID, address, hint)
+		err := r.UpdateDevice(interfaceID, address, hint)
 		if err != nil {
 			return nil, err
 		}
 		return &xmlrpc.Value{FlatString: ""}, nil
 	})
 
-	h.HandleFunc("replaceDevice", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
+	d.HandleFunc("replaceDevice", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
 		q := xmlrpc.Q(args)
 		if len(q.Slice()) != 3 {
 			return nil, fmt.Errorf("Expected 3 arguments for replaceDevice method: %d", len(q.Slice()))
@@ -163,14 +155,14 @@ func NewHandler(receiver Receiver) *Handler {
 			return nil, fmt.Errorf("Invalid argument(s) for replaceDevice method: %v", q.Err())
 		}
 		svrLog.Debugf("Call of method replaceDevice received: %s, %s, %s", interfaceID, oldDeviceAddress, newDeviceAddress)
-		err := h.receiver.ReplaceDevice(interfaceID, oldDeviceAddress, newDeviceAddress)
+		err := r.ReplaceDevice(interfaceID, oldDeviceAddress, newDeviceAddress)
 		if err != nil {
 			return nil, err
 		}
 		return &xmlrpc.Value{FlatString: ""}, nil
 	})
 
-	h.HandleFunc("readdedDevice", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
+	d.HandleFunc("readdedDevice", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
 		q := xmlrpc.Q(args)
 		if len(q.Slice()) != 2 {
 			return nil, fmt.Errorf("Expected 2 arguments for readdedDevice method: %d", len(q.Slice()))
@@ -185,12 +177,12 @@ func NewHandler(receiver Receiver) *Handler {
 			return nil, fmt.Errorf("Invalid argument(s) for readdedDevice method: %v", q.Err())
 		}
 		svrLog.Debugf("Call of method readdedDevice received: %s, %v", interfaceID, addresses)
-		err := h.receiver.ReaddedDevice(interfaceID, addresses)
+		err := r.ReaddedDevice(interfaceID, addresses)
 		if err != nil {
 			return nil, err
 		}
 		return &xmlrpc.Value{FlatString: ""}, nil
 	})
 
-	return h
+	return d
 }

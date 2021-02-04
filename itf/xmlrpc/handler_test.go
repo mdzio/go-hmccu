@@ -10,7 +10,7 @@ import (
 )
 
 func TestServerBadRequest(t *testing.T) {
-	h := &Handler{}
+	h := &Handler{Dispatcher: &Dispatcher{}}
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
@@ -30,7 +30,7 @@ func TestServerBadRequest(t *testing.T) {
 }
 
 func TestServerUnknownMethod(t *testing.T) {
-	h := &Handler{}
+	h := &Handler{Dispatcher: &Dispatcher{}}
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
@@ -53,7 +53,7 @@ func TestServerUnknownMethod(t *testing.T) {
 }
 
 func TestServer(t *testing.T) {
-	h := &Handler{}
+	h := &Handler{Dispatcher: &Dispatcher{}}
 	h.SystemMethods()
 	h.HandleFunc("echo", func(args *Value) (*Value, error) {
 		q := Q(args)
@@ -111,7 +111,7 @@ func TestServer(t *testing.T) {
 }
 
 func TestServerMulticall(t *testing.T) {
-	h := &Handler{}
+	h := &Handler{Dispatcher: &Dispatcher{}}
 	h.SystemMethods()
 	h.HandleFunc("echo", func(args *Value) (*Value, error) {
 		q := Q(args)
@@ -193,7 +193,7 @@ func TestServerMulticall(t *testing.T) {
 }
 
 func TestServerWithUnknownMethod(t *testing.T) {
-	h := &Handler{}
+	h := &Handler{Dispatcher: &Dispatcher{}}
 	h.HandleUnknownFunc(func(name string, _ *Value) (*Value, error) {
 		v, _ := NewValue("Method " + name + " called")
 		return v, nil

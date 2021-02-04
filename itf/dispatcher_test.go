@@ -48,7 +48,7 @@ func (r *receiver) ReaddedDevice(interfaceID string, deletedAddresses []string) 
 
 func TestServer(t *testing.T) {
 	r := &receiver{}
-	h := NewHandler(r)
+	h := &xmlrpc.Handler{Dispatcher: NewDispatcher(r)}
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
