@@ -70,7 +70,7 @@ type MethodError struct {
 
 // Error implements the error interface.
 func (f *MethodError) Error() string {
-	return fmt.Sprintf("XML-RPC fault (code: %d, message: %s)", f.Code, f.Message)
+	return fmt.Sprintf("RPC fault (code: %d, message: %s)", f.Code, f.Message)
 }
 
 // Query helps to extract values from the XML model.

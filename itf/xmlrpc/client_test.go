@@ -27,7 +27,7 @@ func TestClient_Call(t *testing.T) {
 	if d != nil || err == nil {
 		t.Error("error expected")
 	}
-	if err.Error() != "XML-RPC fault (code: -1, message: unknownMethod: unknown method name)" {
+	if err.Error() != "RPC fault (code: -1, message: unknownMethod: unknown method name)" {
 		t.Errorf("unexpected error: %v", err)
 	}
 

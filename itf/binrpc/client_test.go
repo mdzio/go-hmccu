@@ -28,15 +28,22 @@ func newTestClient(t *testing.T) *Client {
 func TestClient_Call(t *testing.T) {
 	c := newTestClient(t)
 
-	//d, err := c.Call("unknownMethod", []*xmlrpc.Value{})
-	//if d != nil || err == nil {
-	//	t.Error("error expected")
-	//}
-	//if err.Error() != "XML-RPC fault (code: -1, message: unknownMethod: unknown method name)" {
-	//	t.Errorf("unexpected error: %v", err)
-	//}
+	d, err := c.Call("unknownMethod", []*xmlrpc.Value{})
+	if d != nil || err == nil {
+		t.Error("error expected")
+		// the dot in unknown.method is CUxD specific
+	} else if err.Error() != "RPC fault (code: -1, message: unknownMethod: unknown.method name)" {
+		t.Errorf("unexpected error: %v", err)
+	}
 
-	d, err := c.Call("getDeviceDescription", []*xmlrpc.Value{{FlatString: "CUX1200002:1"}})
+	d, err = c.Call("getDeviceDescription", []*xmlrpc.Value{{FlatString: "ZZZ9999999:1"}})
+	if err == nil {
+		t.Error("error expected")
+	} else if err.Error() != "RPC fault (code: -2, message: Unknown instance)" {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	d, err = c.Call("getDeviceDescription", []*xmlrpc.Value{{FlatString: "CUX1200002:1"}})
 	if err != nil {
 		t.Fatal(err)
 	}

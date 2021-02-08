@@ -12,12 +12,6 @@ import (
 	"github.com/mdzio/go-hmccu/itf/xmlrpc"
 )
 
-const (
-	msgTypeRequest    = 0x00
-	msgTypeResponse   = 0x01
-	requestHeaderSize = 8
-)
-
 // Encoder encodes XML-RPC requests as BIN-RPC.
 type Encoder struct {
 	b        *bufio.Writer

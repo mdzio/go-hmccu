@@ -55,7 +55,7 @@ func (c *Client) Call(method string, params []*xmlrpc.Value) (*xmlrpc.Value, err
 		panic(err)
 	}
 	dec := NewDecoder(conn)
-	resp, err := dec.DecodeResponse()
+	resp, err := dec.DecodeResponseOrFault()
 	if err != nil {
 		clnLog.Errorf("Failed to decode response %s: %s", method, err)
 		return nil, err

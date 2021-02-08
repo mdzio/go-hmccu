@@ -3,21 +3,13 @@ package binrpc
 import (
 	"bufio"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"math"
 	"strconv"
 
 	"github.com/mdzio/go-hmccu/itf/xmlrpc"
-)
-
-const (
-	integerType = 0x01
-	booleanType = 0x02
-	stringType  = 0x03
-	doubleType  = 0x04
-	arrayType   = 0x100
-	structType  = 0x101
 )
 
 // Decoder decodes BIN-RPC requests.
@@ -56,19 +48,36 @@ func (d *Decoder) DecodeRequest() (string, []*xmlrpc.Value, error) {
 	return string(method), params, err
 }
 
-// DecodeResponse decodes a BIN-RPC response.
-func (d *Decoder) DecodeResponse() (*xmlrpc.Value, error) {
-	var header struct {
-		Head    [3]byte
-		MsgType uint8
-		MsgSize uint32
-	}
-
+// DecodeResponseOrFault decodes a BIN-RPC response/fault.
+func (d *Decoder) DecodeResponseOrFault() (*xmlrpc.Value, error) {
+	// read header
 	if err := binary.Read(d.b, binary.BigEndian, &header); err != nil {
-		return nil, fmt.Errorf("Failed to decode header")
+		return nil, fmt.Errorf("Reading of header failed: %w", err)
 	}
-
-	return d.decodeValue()
+	// check marker
+	if header.Marker != binrpcMarker {
+		return nil, fmt.Errorf("Invalid start of header: %s", hex.EncodeToString(header.Marker[:]))
+	}
+	// message type?
+	switch header.MsgType {
+	case msgTypeResponse:
+		// valid response
+		return d.decodeValue()
+	case msgTypeFault:
+		// fault response
+		v, err := d.decodeValue()
+		if err != nil {
+			return nil, fmt.Errorf("Decoding of fault response failed: %w", err)
+		}
+		f := xmlrpc.Q(v)
+		code := f.Key("faultCode").Int()
+		msg := f.Key("faultString").String()
+		if f.Err() != nil {
+			return nil, fmt.Errorf("Invalid fault response: %v", f.Err())
+		}
+		return nil, &xmlrpc.MethodError{Code: code, Message: msg}
+	}
+	return nil, fmt.Errorf("Unexpected message type: %02Xh", header.MsgType)
 }
 
 func (d *Decoder) decodeParams() ([]*xmlrpc.Value, error) {
