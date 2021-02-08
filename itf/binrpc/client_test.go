@@ -1,40 +1,32 @@
-/*
-Environment variables for integration tests:
-	CCU_ADDRESS:
-		hostname or IP address of the test CCU2
-	LOG_LEVEL:
-		off, error, warning, info, debug, trace
-*/
 package binrpc
 
 import (
-	"os"
 	"testing"
 
 	"github.com/mdzio/go-hmccu/itf/xmlrpc"
-	"github.com/mdzio/go-logging"
+	"github.com/mdzio/go-lib/testutil"
 )
 
-func init() {
-	var l logging.LogLevel
-	err := l.Set(os.Getenv("LOG_LEVEL"))
-	if err == nil {
-		logging.SetLevel(l)
-	}
-}
+// Test configuration (environment variables)
+const (
+	// LOG_LEVEL: OFF, ERROR, WARNING, INFO, DEBUG, TRACE
 
-func getXMLRPCAddr(t *testing.T) string {
-	ccuAddr := os.Getenv("CCU_ADDRESS")
-	if len(ccuAddr) == 0 {
-		t.Skip("environment variable CCU_ADDRESS not set")
-	}
-	// use BidCos-RF XML-RPC interface
-	return ccuAddr + ":8701"
+	// hostname or IP address of the test CCU, e.g. 192.168.0.10
+	ccuAddress = "CCU_ADDRESS"
+	// Open port 8701 in the CCU firewall.
+
+	// Create two devices of type 40 in CUxD:
+	// CUX4000100 (X) HM-RC-19 CUX4000100     * KEY
+	// CUX4000101 (X) HM-LC-Sw1-Pl CUX4000101 * SWITCH
+)
+
+func newTestClient(t *testing.T) *Client {
+	// use CUxD BIN-RPC interface
+	return &Client{Addr: testutil.Config(t, ccuAddress) + ":8701"}
 }
 
 func TestClient_Call(t *testing.T) {
-	ccuAddress := getXMLRPCAddr(t)
-	c := Client{Addr: ccuAddress}
+	c := newTestClient(t)
 
 	//d, err := c.Call("unknownMethod", []*xmlrpc.Value{})
 	//if d != nil || err == nil {
