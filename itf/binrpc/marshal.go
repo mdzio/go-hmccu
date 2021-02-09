@@ -124,8 +124,8 @@ func (e *Encoder) encodeParams(params []*xmlrpc.Value) error {
 
 func (e *Encoder) encodeParam(v *xmlrpc.Value) error {
 	switch {
-	case v.String != "":
-		err := e.encodeString(v.String)
+	case v.ElemString != "":
+		err := e.encodeString(v.ElemString)
 		if err != nil {
 			return fmt.Errorf("Failed to encode string: %w", err)
 		}

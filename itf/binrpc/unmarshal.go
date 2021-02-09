@@ -50,19 +50,24 @@ func (d *Decoder) DecodeRequest() (string, []*xmlrpc.Value, error) {
 
 // DecodeResponseOrFault decodes a BIN-RPC response/fault.
 func (d *Decoder) DecodeResponseOrFault() (*xmlrpc.Value, error) {
-	// read header
-	if err := binary.Read(d.b, binary.BigEndian, &header); err != nil {
+	// read hdr
+	var hdr header
+	if err := binary.Read(d.b, binary.BigEndian, &hdr); err != nil {
 		return nil, fmt.Errorf("Reading of header failed: %w", err)
 	}
+
 	// check marker
-	if header.Marker != binrpcMarker {
-		return nil, fmt.Errorf("Invalid start of header: %s", hex.EncodeToString(header.Marker[:]))
+	if hdr.Marker != binrpcMarker {
+		return nil, fmt.Errorf("Invalid start of header: %s", hex.EncodeToString(hdr.Marker[:]))
 	}
+
 	// message type?
-	switch header.MsgType {
+	switch hdr.MsgType {
+
 	case msgTypeResponse:
 		// valid response
 		return d.decodeValue()
+
 	case msgTypeFault:
 		// fault response
 		v, err := d.decodeValue()
@@ -73,11 +78,12 @@ func (d *Decoder) DecodeResponseOrFault() (*xmlrpc.Value, error) {
 		code := f.Key("faultCode").Int()
 		msg := f.Key("faultString").String()
 		if f.Err() != nil {
-			return nil, fmt.Errorf("Invalid fault response: %v", f.Err())
+			return nil, fmt.Errorf("Invalid fault response: %w", f.Err())
 		}
+		// return fault as error
 		return nil, &xmlrpc.MethodError{Code: code, Message: msg}
 	}
-	return nil, fmt.Errorf("Unexpected message type: %02Xh", header.MsgType)
+	return nil, fmt.Errorf("Unexpected message type: %02Xh", hdr.MsgType)
 }
 
 func (d *Decoder) decodeParams() ([]*xmlrpc.Value, error) {

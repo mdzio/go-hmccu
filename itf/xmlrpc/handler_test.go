@@ -79,7 +79,7 @@ func TestServer(t *testing.T) {
 
 	resp, err = cln.Call("echo", []*Value{
 		{Int: "123"},
-		{String: "force error"},
+		{ElemString: "force error"},
 	})
 	if resp != nil {
 		t.Errorf("unexpected response: %v", resp)

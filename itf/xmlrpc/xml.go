@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // MethodCall represents an XML-RPC method call.
@@ -36,7 +37,7 @@ type Value struct {
 	I4         string   `xml:"i4,omitempty"`
 	Int        string   `xml:"int,omitempty"`
 	Boolean    string   `xml:"boolean,omitempty"`
-	String     string   `xml:"string,omitempty"`
+	ElemString string   `xml:"string,omitempty"`
 	FlatString string   `xml:",chardata"`
 	Double     string   `xml:"double,omitempty"`
 	DateTime   string   `xml:"dateTime.iso8601,omitempty"`
@@ -44,6 +45,93 @@ type Value struct {
 	Struct     *Struct  `xml:"struct"`
 	Array      *Array   `xml:"array"`
 	XMLName    xml.Name `xml:"value"`
+}
+
+// String implements the Stringer interface. Data types are indicated by the
+// representation.
+func (v *Value) String() string {
+	if v.I4 != "" {
+		return v.I4
+	}
+	if v.Int != "" {
+		return v.Int
+	}
+	if v.Boolean != "" {
+		switch v.Boolean {
+		case "0":
+			return "false"
+		case "1":
+			return "true"
+		default:
+			return v.Boolean
+		}
+	}
+	if v.Double != "" {
+		if strings.ContainsRune(v.Double, '.') {
+			return v.Double
+		}
+		return v.Double + ".0"
+	}
+	if v.DateTime != "" {
+		return v.DateTime + "(time)"
+	}
+	if v.Base64 != "" {
+		return v.Base64 + "(base64)"
+	}
+	if v.ElemString != "" {
+		return strconv.Quote(v.ElemString)
+	}
+	if v.Array != nil {
+		var sb strings.Builder
+		sb.WriteRune('[')
+		first := true
+		for i := range v.Array.Data {
+			if first {
+				first = false
+			} else {
+				sb.WriteRune(' ')
+			}
+			sb.WriteString(v.Array.Data[i].String())
+		}
+		sb.WriteRune(']')
+		return sb.String()
+	}
+	if v.Struct != nil {
+		var sb strings.Builder
+		sb.WriteRune('{')
+		first := true
+		for i := range v.Struct.Members {
+			if first {
+				first = false
+			} else {
+				sb.WriteRune(' ')
+			}
+			sb.WriteString(v.Struct.Members[i].Name)
+			sb.WriteRune(':')
+			sb.WriteString(v.Struct.Members[i].Value.String())
+		}
+		sb.WriteRune('}')
+		return sb.String()
+	}
+	return strconv.Quote(v.FlatString)
+}
+
+// Values is a slice of Value's. The type is used by the Caller interface.
+type Values []*Value
+
+// String implements the Stringer interface.
+func (vs Values) String() string {
+	var sb strings.Builder
+	first := true
+	for i := range vs {
+		if first {
+			first = false
+		} else {
+			sb.WriteRune(' ')
+		}
+		sb.WriteString(vs[i].String())
+	}
+	return sb.String()
 }
 
 // Struct represents an XML-RPC struct.
@@ -141,8 +229,8 @@ func (q *Query) String() string {
 		return ""
 	}
 	// first string variant
-	if q.value.String != "" {
-		return q.value.String
+	if q.value.ElemString != "" {
+		return q.value.ElemString
 	}
 	// exclude other types
 	if q.value.Boolean != "" || q.value.I4 != "" || q.value.Int != "" || q.value.Double != "" ||
@@ -155,7 +243,7 @@ func (q *Query) String() string {
 
 func (q *Query) allZero() bool {
 	return q.value.Boolean == "" && q.value.I4 == "" && q.value.Int == "" && q.value.Double == "" &&
-		q.value.String == "" && q.value.FlatString == "" && q.value.Base64 == "" &&
+		q.value.ElemString == "" && q.value.FlatString == "" && q.value.Base64 == "" &&
 		q.value.DateTime == "" && q.value.Array == nil && q.value.Struct == nil
 }
 

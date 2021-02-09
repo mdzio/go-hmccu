@@ -1,6 +1,7 @@
 package binrpc
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/mdzio/go-hmccu/itf/xmlrpc"
@@ -28,6 +29,7 @@ func newTestClient(t *testing.T) *Client {
 func TestClient_Call(t *testing.T) {
 	c := newTestClient(t)
 
+	// test unknown method
 	d, err := c.Call("unknownMethod", []*xmlrpc.Value{})
 	if d != nil || err == nil {
 		t.Error("error expected")
@@ -36,6 +38,7 @@ func TestClient_Call(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 
+	// test unknown instance
 	d, err = c.Call("getDeviceDescription", []*xmlrpc.Value{{FlatString: "ZZZ9999999:1"}})
 	if err == nil {
 		t.Error("error expected")
@@ -43,22 +46,55 @@ func TestClient_Call(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	d, err = c.Call("getDeviceDescription", []*xmlrpc.Value{{FlatString: "CUX1200002:1"}})
+	// test response size limit
+	c.ResponseSizeLimit = 1
+	d, err = c.Call("getDeviceDescription", []*xmlrpc.Value{{FlatString: "CUX4000100:1"}})
+	if d != nil || err == nil {
+		t.Error("error expected")
+	} else if !strings.HasSuffix(err.Error(), "unexpected EOF") {
+		t.Errorf("unexpected error: %v", err)
+	}
+	c.ResponseSizeLimit = 0
+
+	// test successful call
+	d, err = c.Call("getDeviceDescription", []*xmlrpc.Value{{FlatString: "CUX4000100:1"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	e := xmlrpc.Q(d)
 	str := e.Key("ADDRESS").String()
-	if str != "CUX1200002:1" {
-		t.Error("invalid ADDRESS")
+	if str != "CUX4000100:1" {
+		t.Errorf("invalid ADDRESS: %s", str)
 	}
 	str = e.Key("PARENT_TYPE").String()
-	if str != "HM-WS550STH-I" {
-		t.Error("invalid PARENT_TYPE")
+	if str != "HM-RC-19" {
+		t.Errorf("invalid PARENT_TYPE: %s", str)
 	}
-	arr := e.Key("PARAMSETS").Slice()
-	if len(arr) != 2 || arr[0].String() != "MASTER" || arr[1].String() != "VALUES" {
-		t.Error("invalid PARAMSETS")
+	arr := e.Key("PARAMSETS").Strings()
+	if len(arr) != 2 || arr[0] != "MASTER" || arr[1] != "VALUES" {
+		t.Errorf("invalid PARAMSETS: %v", arr)
+	}
+	if e.Err() != nil {
+		t.Error(e.Err())
+	}
+
+	// test another call
+	d, err = c.Call("getDeviceDescription", []*xmlrpc.Value{{FlatString: "CUX4000101:1"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e = xmlrpc.Q(d)
+	str = e.Key("ADDRESS").String()
+	if str != "CUX4000101:1" {
+		t.Errorf("invalid ADDRESS: %s", str)
+	}
+	str = e.Key("PARENT_TYPE").String()
+	if str != "HM-LC-Sw1-Pl" {
+		t.Errorf("invalid PARENT_TYPE: %s", str)
+	}
+	arr = e.Key("PARAMSETS").Strings()
+	if len(arr) != 2 || arr[0] != "MASTER" || arr[1] != "VALUES" {
+		t.Errorf("invalid PARAMSETS: %v", arr)
 	}
 	if e.Err() != nil {
 		t.Error(e.Err())

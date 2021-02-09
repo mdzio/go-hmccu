@@ -3,7 +3,7 @@ package binrpc
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"time"
 
@@ -11,55 +11,76 @@ import (
 	"github.com/mdzio/go-logging"
 )
 
+const (
+	// receive timeout
+	receiveTimeout = 15 * time.Second
+
+	// max. size of a valid response, if not specified: 2 MB
+	responseSizeLimit = 2 * 1024 * 1024
+)
+
 var clnLog = logging.Get("binrpc-client")
 
-// Client provides access to an XML-RPC server.
+// Client provides access to an BIN-RPC server.
 type Client struct {
-	Addr string
-	// TODO: implement
-	//ResponseSizeLimit int64
+	Addr              string
+	ResponseSizeLimit int64
 }
 
-// Call executes an remote procedure call.
-func (c *Client) Call(method string, params []*xmlrpc.Value) (*xmlrpc.Value, error) {
-	clnLog.Tracef("Calling method %s on %s", method, c.Addr)
-
-	conn, err := net.Dial("tcp", c.Addr)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to connect: %s", err)
+// Call executes an remote procedure call. Call implements xmlrpc.Caller.
+func (c *Client) Call(method string, params xmlrpc.Values) (*xmlrpc.Value, error) {
+	// log
+	if clnLog.TraceEnabled() {
+		clnLog.Tracef("Calling method %s on %s", method, c.Addr)
+		clnLog.Tracef("Parameters: %s", params)
 	}
 
+	// open connection
+	conn, err := net.Dial("tcp", c.Addr)
+	if err != nil {
+		return nil, fmt.Errorf("Connecting to %s failed: %w", c.Addr, err)
+	}
 	defer conn.Close()
 
+	// encode request
 	buf := bytes.Buffer{}
 	e := NewEncoder(&buf)
 	err = e.EncodeRequest(method, params)
 	if err != nil {
-		clnLog.Errorf("Failed to encode request %s: %s", method, err)
-		return nil, err
-	}
-	out, err := ioutil.ReadAll(&buf)
-	if err != nil {
-		clnLog.Errorf("Failed to read encoded request %s: %s", method, err)
-		return nil, err
+		return nil, fmt.Errorf("Encoding of request for %s failed: %w", c.Addr, err)
 	}
 
-	_, err = conn.Write(out)
+	// send request
+	_, err = conn.Write(buf.Bytes())
 	if err != nil {
-		clnLog.Errorf("Failed to send request %s: %s", method, err)
-		return nil, err
+		return nil, fmt.Errorf("Sending of request to %s failed: %w", c.Addr, err)
 	}
 
-	err = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-	if err != nil {
-		panic(err)
+	// receive response
+	limit := c.ResponseSizeLimit
+	if limit == 0 {
+		limit = responseSizeLimit
 	}
-	dec := NewDecoder(conn)
+	limitReader := io.LimitReader(conn, limit)
+	err = conn.SetReadDeadline(time.Now().Add(receiveTimeout))
+	if err != nil {
+		return nil, fmt.Errorf("Setting of read deadline failed: %w", err)
+	}
+
+	// decode response
+	dec := NewDecoder(limitReader)
 	resp, err := dec.DecodeResponseOrFault()
 	if err != nil {
-		clnLog.Errorf("Failed to decode response %s: %s", method, err)
+		_, methodError := err.(*xmlrpc.MethodError)
+		if !methodError {
+			return nil, fmt.Errorf("Decoding of response from %s failed: %w", c.Addr, err)
+		}
 		return nil, err
 	}
 
+	// log
+	if clnLog.TraceEnabled() {
+		clnLog.Tracef("Result: %v", resp)
+	}
 	return resp, nil
 }

@@ -43,7 +43,7 @@ func TestMarshalXMLValue(t *testing.T) {
 		},
 		{
 			// test case 4
-			Value{String: "abc"},
+			Value{ElemString: "abc"},
 			"<value><string>abc</string></value>",
 		},
 		{
@@ -81,7 +81,7 @@ func TestMarshalXMLValue(t *testing.T) {
 				Struct: &Struct{
 					Members: []*Member{
 						{"Field1", &Value{Int: "123"}},
-						{"Field2", &Value{String: "abc"}},
+						{"Field2", &Value{ElemString: "abc"}},
 					},
 				},
 			},
@@ -156,7 +156,7 @@ func TestMarshal(t *testing.T) {
 				Params: &Params{
 					[]*Param{
 						{&Value{Boolean: "1"}},
-						{&Value{String: "abc"}},
+						{&Value{ElemString: "abc"}},
 					},
 				},
 			},
@@ -175,7 +175,7 @@ func TestMarshal(t *testing.T) {
 							},
 							{
 								"faultString",
-								&Value{String: "Too many parameters."},
+								&Value{ElemString: "Too many parameters."},
 							},
 						},
 					},
@@ -343,9 +343,9 @@ func TestQuery_String(t *testing.T) {
 		in     Value
 		wanted string
 	}{
-		{Value{String: "abc"}, "abc"},
+		{Value{ElemString: "abc"}, "abc"},
 		{Value{FlatString: " def"}, " def"},
-		{Value{String: "abc", FlatString: "def"}, "abc"},
+		{Value{ElemString: "abc", FlatString: "def"}, "abc"},
 	}
 	for _, c := range cases {
 		u := Q(&c.in)
@@ -391,7 +391,7 @@ func TestQuery_Key(t *testing.T) {
 			Struct: &Struct{
 				Members: []*Member{
 					{"name1", &Value{I4: "123"}},
-					{"name2", &Value{String: "abc"}},
+					{"name2", &Value{ElemString: "abc"}},
 				},
 			},
 		},
@@ -440,7 +440,7 @@ func TestQuery_TryKey(t *testing.T) {
 			Struct: &Struct{
 				Members: []*Member{
 					{"name1", &Value{I4: "123"}},
-					{"name2", &Value{String: "abc"}},
+					{"name2", &Value{ElemString: "abc"}},
 				},
 			},
 		},
@@ -497,7 +497,7 @@ func TestQuery_Strings(t *testing.T) {
 			Array: &Array{
 				[]*Value{
 					{FlatString: "abc"},
-					{String: "def"},
+					{ElemString: "def"},
 				},
 			},
 		},

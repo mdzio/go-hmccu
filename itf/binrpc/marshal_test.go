@@ -25,10 +25,10 @@ func TestEncodeRequest(t *testing.T) {
 			"init",
 			[]*xmlrpc.Value{
 				{
-					String: "xmlrpc_bin://172.16.23.180:2004",
+					ElemString: "xmlrpc_bin://172.16.23.180:2004",
 				},
 				{
-					String: "test",
+					ElemString: "test",
 				},
 			},
 			"42 69 6e 00 00 00 00 3f 00 00 00 04 69 6e 69 74 00 00 00 02 00 00 00 03 00 00 00 1f 78 6d 6c 72 70 63 5f 62 69 6e 3a 2f 2f 31 37 32 2e 31 36 2e 32 33 2e 31 38 30 3a 32 30 30 34 00 00 00 03 00 00 00 04 74 65 73 74",
@@ -66,7 +66,7 @@ func TestEncodeParam(t *testing.T) {
 		{
 			"String BidCoS-RF",
 			xmlrpc.Value{
-				String: "BidCoS-RF",
+				ElemString: "BidCoS-RF",
 			},
 			"00 00 00 03 00 00 00 09 42 69 64 43 6f 53 2d 52 46",
 			false,
