@@ -69,7 +69,7 @@ func (c *Client) Call(method string, params xmlrpc.Values) (*xmlrpc.Value, error
 
 	// decode response
 	dec := NewDecoder(limitReader)
-	resp, err := dec.DecodeResponseOrFault()
+	resp, err := dec.DecodeResponse()
 	if err != nil {
 		_, methodError := err.(*xmlrpc.MethodError)
 		if !methodError {

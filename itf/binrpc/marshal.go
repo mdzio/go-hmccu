@@ -76,7 +76,6 @@ func (e *Encoder) EncodeRequest(method string, params []*xmlrpc.Value) error {
 func (e *Encoder) EncodeResponse(param *xmlrpc.Value) error {
 	q := xmlrpc.Q(param)
 	if q.IsEmpty() {
-		svrLog.Debugf("Encoding empty string response")
 		err := e.encodeString("")
 		if err != nil {
 			return err

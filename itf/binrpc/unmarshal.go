@@ -48,8 +48,9 @@ func (d *Decoder) DecodeRequest() (string, []*xmlrpc.Value, error) {
 	return string(method), params, err
 }
 
-// DecodeResponseOrFault decodes a BIN-RPC response/fault.
-func (d *Decoder) DecodeResponseOrFault() (*xmlrpc.Value, error) {
+// DecodeResponse decodes a BIN-RPC response/fault. A received fault packet is
+// returned as xmlrpc.MethodError.
+func (d *Decoder) DecodeResponse() (*xmlrpc.Value, error) {
 	// read hdr
 	var hdr header
 	if err := binary.Read(d.b, binary.BigEndian, &hdr); err != nil {

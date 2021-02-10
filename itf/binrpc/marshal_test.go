@@ -3,7 +3,6 @@ package binrpc
 import (
 	"bytes"
 	"encoding/hex"
-	"io/ioutil"
 	"strings"
 	"testing"
 
@@ -24,31 +23,86 @@ func TestEncodeRequest(t *testing.T) {
 		{
 			"init",
 			[]*xmlrpc.Value{
-				{
-					ElemString: "xmlrpc_bin://172.16.23.180:2004",
-				},
-				{
-					ElemString: "test",
-				},
+				{ElemString: "xmlrpc_bin://172.16.23.180:2004"},
+				{ElemString: "test"},
 			},
-			"42 69 6e 00 00 00 00 3f 00 00 00 04 69 6e 69 74 00 00 00 02 00 00 00 03 00 00 00 1f 78 6d 6c 72 70 63 5f 62 69 6e 3a 2f 2f 31 37 32 2e 31 36 2e 32 33 2e 31 38 30 3a 32 30 30 34 00 00 00 03 00 00 00 04 74 65 73 74",
+			"42 69 6e 00 00 00 00 3f 00 00 00 04 69 6e 69 74 00 00 00 02 00 00 00 03 00 00 00 1f 78 6d 6c 72 " +
+				"70 63 5f 62 69 6e 3a 2f 2f 31 37 32 2e 31 36 2e 32 33 2e 31 38 30 3a 32 30 30 34 00 00 00 03 00 " +
+				"00 00 04 74 65 73 74",
+		},
+		{
+			"system.multicall",
+			[]*xmlrpc.Value{{
+				Array: &xmlrpc.Array{Data: []*xmlrpc.Value{{
+					Struct: &xmlrpc.Struct{Members: []*xmlrpc.Member{
+						{Name: "methodName", Value: &xmlrpc.Value{FlatString: "event"}},
+						{Name: "params", Value: &xmlrpc.Value{
+							Array: &xmlrpc.Array{Data: []*xmlrpc.Value{
+								{FlatString: "CUxD"},
+								{FlatString: "CUX4000101:2"},
+								{FlatString: "STATE"},
+								{Boolean: "0"},
+							}},
+						}},
+					}},
+				}}},
+			}},
+			"42 69 6E 00 00 00 00 87 " +
+				"00 00 00 10 73 79 73 74 65 6D 2E 6D 75 6C 74 69 63 61 6C 6C 00 00 00 01 00 00 01 00 00 00 00 01 " +
+				"00 00 01 01 00 00 00 02 00 00 00 0A 6D 65 74 68 6F 64 4E 61 6D 65 00 00 00 03 00 00 00 05 65 76 " +
+				"65 6E 74 00 00 00 06 70 61 72 61 6D 73 00 00 01 00 00 00 00 04 00 00 00 03 00 00 00 04 43 55 78 " +
+				"44 00 00 00 03 00 00 00 0C 43 55 58 34 30 30 30 31 30 31 3A 32 00 00 00 03 00 00 00 05 53 54 41 " +
+				"54 45 00 00 00 02 00",
 		},
 	}
-
 	for _, tt := range cases {
 		t.Run(tt.method, func(t *testing.T) {
 			buf := bytes.Buffer{}
 			e := NewEncoder(&buf)
 			err := e.EncodeRequest(tt.method, tt.params)
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
-			out, err := ioutil.ReadAll(&buf)
+			want := strings.ToLower(strings.ReplaceAll(tt.want, " ", ""))
+			got := hex.EncodeToString(buf.Bytes())
+			if got != want {
+				t.Errorf("Expected: %s, got: %s", want, got)
+			}
+		})
+	}
+}
+
+func TestEncodeResponse(t *testing.T) {
+	cases := []struct {
+		name  string
+		value *xmlrpc.Value
+		want  string
+	}{
+		{
+			"empty response",
+			&xmlrpc.Value{},
+			"42 69 6E 01 00 00 00 08 00 00 00 03 00 00 00 00",
+		},
+		{
+			"array with one empty string",
+			&xmlrpc.Value{
+				Array: &xmlrpc.Array{Data: []*xmlrpc.Value{
+					{FlatString: ""},
+				}},
+			},
+			"42 69 6E 01 00 00 00 10 00 00 01 00 00 00 00 01 00 00 00 03 00 00 00 00",
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := bytes.Buffer{}
+			e := NewEncoder(&buf)
+			err := e.EncodeResponse(tt.value)
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
-			want := strings.ReplaceAll(tt.want, " ", "")
-			got := hex.EncodeToString(out)
+			want := strings.ToLower(strings.ReplaceAll(tt.want, " ", ""))
+			got := hex.EncodeToString(buf.Bytes())
 			if got != want {
 				t.Errorf("Expected: %s, got: %s", want, got)
 			}
@@ -184,13 +238,8 @@ func TestEncodeParam(t *testing.T) {
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)
 			}
-
-			out, err := ioutil.ReadAll(e.paramBuf)
-			if err != nil {
-				t.Error(err)
-			}
 			want := strings.ReplaceAll(tt.out, " ", "")
-			got := hex.EncodeToString(out)
+			got := hex.EncodeToString(e.paramBuf.Bytes())
 			if got != want {
 				t.Errorf("Expected: %s, got: %s", want, got)
 			}
