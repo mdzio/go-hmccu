@@ -8,7 +8,7 @@ const (
 	// delay before registration
 	startupDelay = 1 * time.Second
 	// if no callback arrives within this time period, a ping is triggered
-	callbackTimeout = 1 * time.Minute
+	callbackTimeout = 5 * time.Minute
 	// if no pong arrives within this time period, a reregistration is triggered
 	pingTimeout = 5 * time.Second
 )
