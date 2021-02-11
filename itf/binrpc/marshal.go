@@ -14,106 +14,109 @@ import (
 
 // Encoder encodes XML-RPC requests as BIN-RPC.
 type Encoder struct {
-	b        *bufio.Writer
-	paramBuf *bytes.Buffer
+	w *bufio.Writer
 }
 
 // NewEncoder creates an encoder.
 func NewEncoder(w io.Writer) *Encoder {
-	return &Encoder{
-		b:        bufio.NewWriter(w),
-		paramBuf: &bytes.Buffer{},
-	}
+	return &Encoder{w: bufio.NewWriter(w)}
 }
 
 // EncodeRequest encodes a XML-RPC request.
 func (e *Encoder) EncodeRequest(method string, params []*xmlrpc.Value) error {
-	err := e.encodeParams(params)
+	// encode parameters
+	ve := valueEncoder{}
+	err := ve.encodeParams(params)
 	if err != nil {
 		return err
 	}
+	payloadSize := 4 /* method len */ + len(method) + 4 /* params len */ + ve.Len()
 
-	contentSize := e.paramBuf.Len()
-
-	_, err = e.b.Write([]byte("Bin"))
+	// write header
+	_, err = e.w.Write(binrpcMarker[:])
 	if err != nil {
 		return err
 	}
-	_, err = e.b.Write([]byte{msgTypeRequest})
+	_, err = e.w.Write([]byte{msgTypeRequest})
 	if err != nil {
-		return fmt.Errorf("Failed to add msg type request: %w", err)
+		return fmt.Errorf("Writing of message type failed: %w", err)
+	}
+	err = binary.Write(e.w, binary.BigEndian, int32(payloadSize))
+	if err != nil {
+		return fmt.Errorf("Writing of payload size failed: %w", err)
 	}
 
-	err = binary.Write(e.b, binary.BigEndian, int32(requestHeaderSize+len(method)+contentSize))
+	// write method name
+	// TODO: fix encoding
+	err = binary.Write(e.w, binary.BigEndian, uint32(len(method)))
 	if err != nil {
-		return fmt.Errorf("Failed to add msg size: %w", err)
+		return fmt.Errorf("Writing of method length failed: %w", err)
+	}
+	_, err = e.w.Write([]byte(method))
+	if err != nil {
+		return fmt.Errorf("Writing of method name failed: %w", err)
 	}
 
-	err = binary.Write(e.b, binary.BigEndian, uint32(len(method)))
+	// write number of parameters
+	err = binary.Write(e.w, binary.BigEndian, uint32(len(params)))
 	if err != nil {
-		return fmt.Errorf("Failed to add method size: %w", err)
+		return fmt.Errorf("Writing number of parameters failed: %w", err)
 	}
 
-	_, err = e.b.Write([]byte(method))
+	// write parameters
+	_, err = e.w.ReadFrom(&ve)
 	if err != nil {
-		return err
+		return fmt.Errorf("Writing of parameters failed: %w", err)
 	}
-
-	err = binary.Write(e.b, binary.BigEndian, uint32(len(params)))
-	if err != nil {
-		return fmt.Errorf("Failed to add params size: %w", err)
-	}
-
-	_, err = e.b.ReadFrom(e.paramBuf)
-	if err != nil {
-		return fmt.Errorf("Failed to add params: %w", err)
-	}
-
-	return e.b.Flush()
+	return e.w.Flush()
 }
 
 // EncodeResponse encodes a XML-RPC response.
-func (e *Encoder) EncodeResponse(param *xmlrpc.Value) error {
-	q := xmlrpc.Q(param)
+func (e *Encoder) EncodeResponse(value *xmlrpc.Value) error {
+	// encode value
+	ve := valueEncoder{}
+	q := xmlrpc.Q(value)
 	if q.IsEmpty() {
-		err := e.encodeString("")
+		err := ve.encodeString("")
 		if err != nil {
 			return err
 		}
 	} else {
-		err := e.encodeParam(param)
+		err := ve.encodeValue(value)
 		if err != nil {
 			return err
 		}
 	}
 
-	contentSize := e.paramBuf.Len()
-
-	_, err := e.b.Write([]byte("Bin"))
+	// write header
+	_, err := e.w.Write(binrpcMarker[:])
 	if err != nil {
 		return err
 	}
-
-	_, err = e.b.Write([]byte{msgTypeResponse})
+	_, err = e.w.Write([]byte{msgTypeResponse})
 	if err != nil {
-		return fmt.Errorf("Failed to msg type response: %w", err)
+		return fmt.Errorf("Writing of message type failed: %w", err)
 	}
-	err = binary.Write(e.b, binary.BigEndian, int32(contentSize))
+	err = binary.Write(e.w, binary.BigEndian, int32(ve.Len()))
 	if err != nil {
-		return fmt.Errorf("Failed to add msg size: %w", err)
-	}
-
-	_, err = e.b.ReadFrom(e.paramBuf)
-	if err != nil {
-		return fmt.Errorf("Failed to add param: %w", err)
+		return fmt.Errorf("Writing of payload size failed: %w", err)
 	}
 
-	return e.b.Flush()
+	// write value
+	_, err = e.w.ReadFrom(&ve)
+	if err != nil {
+		return fmt.Errorf("Writing of value failed: %w", err)
+	}
+	return e.w.Flush()
 }
 
-func (e *Encoder) encodeParams(params []*xmlrpc.Value) error {
+type valueEncoder struct {
+	bytes.Buffer
+}
+
+func (e *valueEncoder) encodeParams(params []*xmlrpc.Value) error {
 	for _, v := range params {
-		err := e.encodeParam(v)
+		err := e.encodeValue(v)
 		if err != nil {
 			return fmt.Errorf("Failed to encode params: %w", err)
 		}
@@ -121,7 +124,7 @@ func (e *Encoder) encodeParams(params []*xmlrpc.Value) error {
 	return nil
 }
 
-func (e *Encoder) encodeParam(v *xmlrpc.Value) error {
+func (e *valueEncoder) encodeValue(v *xmlrpc.Value) error {
 	switch {
 	case v.ElemString != "":
 		err := e.encodeString(v.ElemString)
@@ -174,19 +177,19 @@ func (e *Encoder) encodeParam(v *xmlrpc.Value) error {
 	return nil
 }
 
-func (e *Encoder) encodeStruct(v *xmlrpc.Struct) error {
-	err := binary.Write(e.paramBuf, binary.BigEndian, uint32(structType))
+func (e *valueEncoder) encodeStruct(v *xmlrpc.Struct) error {
+	err := binary.Write(e, binary.BigEndian, uint32(structType))
 	if err != nil {
 		return fmt.Errorf("Failed to add type struct: %w", err)
 	}
 
-	err = binary.Write(e.paramBuf, binary.BigEndian, uint32(len(v.Members)))
+	err = binary.Write(e, binary.BigEndian, uint32(len(v.Members)))
 	if err != nil {
 		return fmt.Errorf("Failed to add struct length: %w", err)
 	}
 
 	for _, m := range v.Members {
-		err := e.encodeStringValue(m.Name)
+		err := e.encodeStringWOType(m.Name)
 		if err != nil {
 			return fmt.Errorf("Failed to encode struct key: %w", err)
 		}
@@ -200,13 +203,13 @@ func (e *Encoder) encodeStruct(v *xmlrpc.Struct) error {
 	return nil
 }
 
-func (e *Encoder) encodeString(str string) error {
-	err := binary.Write(e.paramBuf, binary.BigEndian, uint32(stringType))
+func (e *valueEncoder) encodeString(str string) error {
+	err := binary.Write(e, binary.BigEndian, uint32(stringType))
 	if err != nil {
 		return fmt.Errorf("Failed to add type string: %w", err)
 	}
 
-	err = e.encodeStringValue(str)
+	err = e.encodeStringWOType(str)
 	if err != nil {
 		return fmt.Errorf("Failed to add string value: %w", err)
 	}
@@ -214,31 +217,32 @@ func (e *Encoder) encodeString(str string) error {
 	return nil
 }
 
-func (e *Encoder) encodeStringValue(str string) error {
-	err := binary.Write(e.paramBuf, binary.BigEndian, uint32(len(str)))
+func (e *valueEncoder) encodeStringWOType(str string) error {
+	err := binary.Write(e, binary.BigEndian, uint32(len(str)))
 	if err != nil {
 		return fmt.Errorf("Failed to add string size: %w", err)
 	}
 
-	_, err = e.paramBuf.Write([]byte(str))
+	// TODO: fix encoding
+	_, err = e.Write([]byte(str))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (e *Encoder) encodeInteger(n string) error {
+func (e *valueEncoder) encodeInteger(n string) error {
 	num, err := strconv.Atoi(n)
 	if err != nil {
 		return fmt.Errorf("Value is not an integer: %w", err)
 	}
 
-	err = binary.Write(e.paramBuf, binary.BigEndian, uint32(integerType))
+	err = binary.Write(e, binary.BigEndian, uint32(integerType))
 	if err != nil {
 		return fmt.Errorf("Failed to add type string: %w", err)
 	}
 
-	err = binary.Write(e.paramBuf, binary.BigEndian, int32(num))
+	err = binary.Write(e, binary.BigEndian, int32(num))
 	if err != nil {
 		return err
 	}
@@ -246,25 +250,25 @@ func (e *Encoder) encodeInteger(n string) error {
 	return nil
 }
 
-func (e *Encoder) encodeDouble(v string) error {
+func (e *valueEncoder) encodeDouble(v string) error {
 	num, err := strconv.ParseFloat(v, 64)
 	if err != nil {
 		return fmt.Errorf("Value is not an int64: %w", err)
 	}
 
-	err = binary.Write(e.paramBuf, binary.BigEndian, uint32(doubleType))
+	err = binary.Write(e, binary.BigEndian, uint32(doubleType))
 	if err != nil {
 		return fmt.Errorf("Failed to add type string: %w", err)
 	}
 
 	exp := math.Floor(math.Log(math.Abs(num))/math.Ln2) + 1
 	man := math.Floor((num * math.Pow(2, -1*exp)) * (1 << 30))
-	err = binary.Write(e.paramBuf, binary.BigEndian, int32(man))
+	err = binary.Write(e, binary.BigEndian, int32(man))
 	if err != nil {
 		return err
 	}
 
-	err = binary.Write(e.paramBuf, binary.BigEndian, int32(exp))
+	err = binary.Write(e, binary.BigEndian, int32(exp))
 	if err != nil {
 		return err
 	}
@@ -272,7 +276,7 @@ func (e *Encoder) encodeDouble(v string) error {
 	return nil
 }
 
-func (e *Encoder) encodeBool(val string) error {
+func (e *valueEncoder) encodeBool(val string) error {
 	var boolVal bool
 
 	switch val {
@@ -284,12 +288,12 @@ func (e *Encoder) encodeBool(val string) error {
 		return fmt.Errorf("Value is not a bool")
 	}
 
-	err := binary.Write(e.paramBuf, binary.BigEndian, uint32(booleanType))
+	err := binary.Write(e, binary.BigEndian, uint32(booleanType))
 	if err != nil {
 		return fmt.Errorf("Failed to add type bool: %w", err)
 	}
 
-	err = binary.Write(e.paramBuf, binary.BigEndian, boolVal)
+	err = binary.Write(e, binary.BigEndian, boolVal)
 	if err != nil {
 		return err
 	}
@@ -297,13 +301,13 @@ func (e *Encoder) encodeBool(val string) error {
 	return nil
 }
 
-func (e *Encoder) encodeArray(arr *xmlrpc.Array) error {
-	err := binary.Write(e.paramBuf, binary.BigEndian, uint32(arrayType))
+func (e *valueEncoder) encodeArray(arr *xmlrpc.Array) error {
+	err := binary.Write(e, binary.BigEndian, uint32(arrayType))
 	if err != nil {
 		return fmt.Errorf("Failed to add type array: %w", err)
 	}
 
-	err = binary.Write(e.paramBuf, binary.BigEndian, uint32(len(arr.Data)))
+	err = binary.Write(e, binary.BigEndian, uint32(len(arr.Data)))
 	if err != nil {
 		return fmt.Errorf("Failed to add array length: %w", err)
 	}

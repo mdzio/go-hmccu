@@ -75,6 +75,7 @@ func (c *Client) Call(method string, params xmlrpc.Values) (*xmlrpc.Value, error
 		if !methodError {
 			return nil, fmt.Errorf("Decoding of response from %s failed: %w", c.Addr, err)
 		}
+		clnLog.Tracef("Result: %v", err)
 		return nil, err
 	}
 

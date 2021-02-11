@@ -39,6 +39,7 @@ func (d *Decoder) DecodeRequest() (string, []*xmlrpc.Value, error) {
 	}
 
 	method := make([]byte, int(header.MethodLen))
+	// TODO: fix encoding
 	if err := binary.Read(d.b, binary.BigEndian, &method); err != nil {
 		fmt.Printf("Failed to decode method: %s\n", err)
 		return "", nil, fmt.Errorf("Failed to decode method ")
@@ -140,6 +141,7 @@ func (d *Decoder) decodeString() (*xmlrpc.Value, error) {
 	}
 
 	str := make([]byte, int(length))
+	// TODO: fix encoding
 	if err := binary.Read(d.b, binary.BigEndian, &str); err != nil {
 		return nil, fmt.Errorf("Failed to decode string ")
 	}

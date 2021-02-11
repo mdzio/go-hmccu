@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"reflect"
 	"strings"
 	"testing"
@@ -87,8 +86,7 @@ func TestDecodeParam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			buf := bytes.Buffer{}
-			e := NewEncoder(&buf)
+			e := valueEncoder{}
 			err := e.encodeParams([]*xmlrpc.Value{&tt.in})
 			if tt.wantErr {
 				if err == nil {
@@ -100,12 +98,7 @@ func TestDecodeParam(t *testing.T) {
 				t.Errorf("Unexpected error: %v", err)
 			}
 
-			out, err := ioutil.ReadAll(e.paramBuf)
-			if err != nil {
-				t.Error(err)
-			}
-
-			r := bytes.NewReader(out)
+			r := bytes.NewReader(e.Bytes())
 			d := NewDecoder(r)
 			vals, err := d.decodeParamValues(1)
 			if len(vals) == 0 {
@@ -147,8 +140,7 @@ func TestDecodeArrayParam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			buf := bytes.Buffer{}
-			e := NewEncoder(&buf)
+			e := valueEncoder{}
 			err := e.encodeParams([]*xmlrpc.Value{&tt.in})
 			if tt.wantErr {
 				if err == nil {
@@ -160,12 +152,7 @@ func TestDecodeArrayParam(t *testing.T) {
 				t.Errorf("Unexpected error: %v", err)
 			}
 
-			out, err := ioutil.ReadAll(e.paramBuf)
-			if err != nil {
-				t.Error(err)
-			}
-
-			r := bytes.NewReader(out)
+			r := bytes.NewReader(e.Bytes())
 			d := NewDecoder(r)
 			vals, err := d.decodeParamValues(1)
 			if len(vals) == 0 {
@@ -208,8 +195,7 @@ func TestDecodeStructParam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			buf := bytes.Buffer{}
-			e := NewEncoder(&buf)
+			e := valueEncoder{}
 			err := e.encodeParams([]*xmlrpc.Value{&tt.in})
 			if tt.wantErr {
 				if err == nil {
@@ -221,12 +207,7 @@ func TestDecodeStructParam(t *testing.T) {
 				t.Errorf("Unexpected error: %v", err)
 			}
 
-			out, err := ioutil.ReadAll(e.paramBuf)
-			if err != nil {
-				t.Error(err)
-			}
-
-			r := bytes.NewReader(out)
+			r := bytes.NewReader(e.Bytes())
 			d := NewDecoder(r)
 			vals, err := d.decodeParamValues(1)
 			if len(vals) == 0 {

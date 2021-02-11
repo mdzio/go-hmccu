@@ -226,8 +226,7 @@ func TestEncodeParam(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			buf := bytes.Buffer{}
-			e := NewEncoder(&buf)
+			e := valueEncoder{}
 			err := e.encodeParams([]*xmlrpc.Value{&tt.in})
 			if tt.wantErr {
 				if err == nil {
@@ -239,7 +238,7 @@ func TestEncodeParam(t *testing.T) {
 				t.Errorf("Unexpected error: %v", err)
 			}
 			want := strings.ReplaceAll(tt.out, " ", "")
-			got := hex.EncodeToString(e.paramBuf.Bytes())
+			got := hex.EncodeToString(e.Bytes())
 			if got != want {
 				t.Errorf("Expected: %s, got: %s", want, got)
 			}
