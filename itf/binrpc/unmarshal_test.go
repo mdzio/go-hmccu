@@ -87,7 +87,7 @@ func TestDecodeParam(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := valueEncoder{}
-			err := e.encodeParams([]*xmlrpc.Value{&tt.in})
+			err := e.encodeValue(&tt.in)
 			if tt.wantErr {
 				if err == nil {
 					t.Error("Expected error")
@@ -141,7 +141,7 @@ func TestDecodeArrayParam(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := valueEncoder{}
-			err := e.encodeParams([]*xmlrpc.Value{&tt.in})
+			err := e.encodeValue(&tt.in)
 			if tt.wantErr {
 				if err == nil {
 					t.Error("Expected error")
@@ -196,7 +196,7 @@ func TestDecodeStructParam(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := valueEncoder{}
-			err := e.encodeParams([]*xmlrpc.Value{&tt.in})
+			err := e.encodeValue(&tt.in)
 			if tt.wantErr {
 				if err == nil {
 					t.Error("Expected error")

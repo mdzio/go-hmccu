@@ -40,7 +40,7 @@ func (e *Encoder) EncodeRequest(method string, params []*xmlrpc.Value) error {
 	}
 
 	// calculate payload size
-	payloadSize := me.Len() /* method name */ + 4 /* params len */ + pe.Len() /* params */
+	payloadSize := me.Len() /* method name */ + pe.Len() /* params */
 
 	// write header
 	_, err = e.w.Write(binrpcMarker[:])
@@ -57,15 +57,9 @@ func (e *Encoder) EncodeRequest(method string, params []*xmlrpc.Value) error {
 	}
 
 	// write method name
-	_, err = e.w.Write(me.Bytes())
+	_, err = e.w.ReadFrom(&me)
 	if err != nil {
 		return fmt.Errorf("Writing of method name failed: %w", err)
-	}
-
-	// write number of parameters
-	err = binary.Write(e.w, binary.BigEndian, uint32(len(params)))
-	if err != nil {
-		return fmt.Errorf("Writing number of parameters failed: %w", err)
 	}
 
 	// write parameters
@@ -120,10 +114,17 @@ type valueEncoder struct {
 }
 
 func (e *valueEncoder) encodeParams(params []*xmlrpc.Value) error {
+	// write number of parameters
+	err := binary.Write(e, binary.BigEndian, uint32(len(params)))
+	if err != nil {
+		return fmt.Errorf("Writing number of parameters failed: %w", err)
+	}
+
+	// write parameters
 	for _, v := range params {
 		err := e.encodeValue(v)
 		if err != nil {
-			return fmt.Errorf("Failed to encode params: %w", err)
+			return err
 		}
 	}
 	return nil
@@ -199,7 +200,7 @@ func (e *valueEncoder) encodeStruct(v *xmlrpc.Struct) error {
 			return fmt.Errorf("Failed to encode struct key: %w", err)
 		}
 
-		err = e.encodeParams([]*xmlrpc.Value{m.Value})
+		err = e.encodeValue(m.Value)
 		if err != nil {
 			return fmt.Errorf("Failed to encode struct value: %w", err)
 		}
@@ -209,16 +210,17 @@ func (e *valueEncoder) encodeStruct(v *xmlrpc.Struct) error {
 }
 
 func (e *valueEncoder) encodeString(str string) error {
+	// write data type
 	err := binary.Write(e, binary.BigEndian, uint32(stringType))
 	if err != nil {
-		return fmt.Errorf("Failed to add type string: %w", err)
+		return fmt.Errorf("Writing of string type failed: %w", err)
 	}
 
+	// write length and content
 	err = e.encodeStringWOType(str)
 	if err != nil {
-		return fmt.Errorf("Failed to add string value: %w", err)
+		return err
 	}
-
 	return nil
 }
 
@@ -242,90 +244,92 @@ func (e *valueEncoder) encodeStringWOType(str string) error {
 }
 
 func (e *valueEncoder) encodeInteger(n string) error {
+	// convert string to integer
 	num, err := strconv.Atoi(n)
 	if err != nil {
-		return fmt.Errorf("Value is not an integer: %w", err)
+		return fmt.Errorf("Invalid integer value: %s", n)
 	}
 
+	// write data type
 	err = binary.Write(e, binary.BigEndian, uint32(integerType))
 	if err != nil {
-		return fmt.Errorf("Failed to add type string: %w", err)
+		return fmt.Errorf("Writing of integer type failed: %w", err)
 	}
 
+	// write integer
 	err = binary.Write(e, binary.BigEndian, int32(num))
 	if err != nil {
-		return err
+		return fmt.Errorf("Writing of integer failed: %w", err)
 	}
-
 	return nil
 }
 
 func (e *valueEncoder) encodeDouble(v string) error {
+	// convert string to float64
 	num, err := strconv.ParseFloat(v, 64)
 	if err != nil {
-		return fmt.Errorf("Value is not an int64: %w", err)
+		return fmt.Errorf("Invalid float value: %s", v)
 	}
 
+	// write data type
 	err = binary.Write(e, binary.BigEndian, uint32(doubleType))
 	if err != nil {
-		return fmt.Errorf("Failed to add type string: %w", err)
+		return fmt.Errorf("Writing of double type failed: %w", err)
 	}
 
+	// convert to BIN-RPC representation
 	exp := math.Floor(math.Log(math.Abs(num))/math.Ln2) + 1
 	man := math.Floor((num * math.Pow(2, -1*exp)) * (1 << 30))
+
+	// write BIN-RPC representation
 	err = binary.Write(e, binary.BigEndian, int32(man))
 	if err != nil {
-		return err
+		return fmt.Errorf("Writing of double mantissa failed: %w", err)
 	}
-
 	err = binary.Write(e, binary.BigEndian, int32(exp))
 	if err != nil {
-		return err
+		return fmt.Errorf("Writing of double exponent failed: %w", err)
 	}
-
 	return nil
 }
 
 func (e *valueEncoder) encodeBool(val string) error {
+	// convert string to bool
 	var boolVal bool
-
 	switch val {
 	case "0":
 		boolVal = false
 	case "1":
 		boolVal = true
 	default:
-		return fmt.Errorf("Value is not a bool")
+		return fmt.Errorf("Invalid bool value: %s", val)
 	}
 
+	// write data type
 	err := binary.Write(e, binary.BigEndian, uint32(booleanType))
 	if err != nil {
-		return fmt.Errorf("Failed to add type bool: %w", err)
+		return fmt.Errorf("Writing of bool type failed: %w", err)
 	}
 
+	// write bool
 	err = binary.Write(e, binary.BigEndian, boolVal)
 	if err != nil {
-		return err
+		return fmt.Errorf("Writing of bool failed: %w", err)
 	}
-
 	return nil
 }
 
 func (e *valueEncoder) encodeArray(arr *xmlrpc.Array) error {
+	// write data type
 	err := binary.Write(e, binary.BigEndian, uint32(arrayType))
 	if err != nil {
-		return fmt.Errorf("Failed to add type array: %w", err)
+		return fmt.Errorf("Writing of array type failed: %w", err)
 	}
 
-	err = binary.Write(e, binary.BigEndian, uint32(len(arr.Data)))
-	if err != nil {
-		return fmt.Errorf("Failed to add array length: %w", err)
-	}
-
+	// encode array elements
 	err = e.encodeParams(arr.Data)
 	if err != nil {
-		return fmt.Errorf("Failed to encode Array: %w", err)
+		return err
 	}
-
 	return nil
 }
