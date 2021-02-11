@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/mdzio/go-hmccu/itf/xmlrpc"
+	"golang.org/x/text/encoding/charmap"
 )
 
 // Encoder encodes XML-RPC requests as BIN-RPC.
@@ -25,12 +26,21 @@ func NewEncoder(w io.Writer) *Encoder {
 // EncodeRequest encodes a XML-RPC request.
 func (e *Encoder) EncodeRequest(method string, params []*xmlrpc.Value) error {
 	// encode parameters
-	ve := valueEncoder{}
-	err := ve.encodeParams(params)
+	pe := valueEncoder{}
+	err := pe.encodeParams(params)
 	if err != nil {
 		return err
 	}
-	payloadSize := 4 /* method len */ + len(method) + 4 /* params len */ + ve.Len()
+
+	// encode method name
+	me := valueEncoder{}
+	err = me.encodeStringWOType(method)
+	if err != nil {
+		return err
+	}
+
+	// calculate payload size
+	payloadSize := me.Len() /* method name */ + 4 /* params len */ + pe.Len() /* params */
 
 	// write header
 	_, err = e.w.Write(binrpcMarker[:])
@@ -47,12 +57,7 @@ func (e *Encoder) EncodeRequest(method string, params []*xmlrpc.Value) error {
 	}
 
 	// write method name
-	// TODO: fix encoding
-	err = binary.Write(e.w, binary.BigEndian, uint32(len(method)))
-	if err != nil {
-		return fmt.Errorf("Writing of method length failed: %w", err)
-	}
-	_, err = e.w.Write([]byte(method))
+	_, err = e.w.Write(me.Bytes())
 	if err != nil {
 		return fmt.Errorf("Writing of method name failed: %w", err)
 	}
@@ -64,7 +69,7 @@ func (e *Encoder) EncodeRequest(method string, params []*xmlrpc.Value) error {
 	}
 
 	// write parameters
-	_, err = e.w.ReadFrom(&ve)
+	_, err = e.w.ReadFrom(&pe)
 	if err != nil {
 		return fmt.Errorf("Writing of parameters failed: %w", err)
 	}
@@ -218,15 +223,20 @@ func (e *valueEncoder) encodeString(str string) error {
 }
 
 func (e *valueEncoder) encodeStringWOType(str string) error {
-	err := binary.Write(e, binary.BigEndian, uint32(len(str)))
+	// encode string with ISO8859-1
+	buf := bytes.Buffer{}
+	charmap.ISO8859_1.NewEncoder().Writer(&buf).Write([]byte(str))
+
+	// write length
+	err := binary.Write(e, binary.BigEndian, uint32(len(buf.Bytes())))
 	if err != nil {
-		return fmt.Errorf("Failed to add string size: %w", err)
+		return fmt.Errorf("Writing of string length failed: %w", err)
 	}
 
-	// TODO: fix encoding
-	_, err = e.Write([]byte(str))
+	// write content
+	_, err = e.Write(buf.Bytes())
 	if err != nil {
-		return err
+		return fmt.Errorf("Writing of string content failed: %w", err)
 	}
 	return nil
 }

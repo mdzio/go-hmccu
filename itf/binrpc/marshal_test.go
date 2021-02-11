@@ -126,6 +126,14 @@ func TestEncodeParam(t *testing.T) {
 			false,
 		},
 		{
+			"String ISO8859-1 üöäÜÖÄß",
+			xmlrpc.Value{
+				FlatString: "üöäÜÖÄß",
+			},
+			"00 00 00 03 00 00 00 07 fc f6 e4 dc d6 c4 df",
+			false,
+		},
+		{
 			"Integer 41",
 			xmlrpc.Value{
 				Int: "41",
