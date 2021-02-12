@@ -187,7 +187,7 @@ func (d *Decoder) decodeDouble() (*xmlrpc.Value, error) {
 
 	// convert
 	val := math.Pow(2, float64(double.Exp)) * float64(double.Man) / mantissaMultiplicator
-	return &xmlrpc.Value{Double: fmt.Sprintf("%f", val)}, nil
+	return &xmlrpc.Value{Double: strconv.FormatFloat(val, 'f', -1, 64)}, nil
 }
 
 func (d *Decoder) decodeArray() (*xmlrpc.Value, error) {

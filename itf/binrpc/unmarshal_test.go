@@ -57,15 +57,15 @@ func TestDecodeValue(t *testing.T) {
 		},
 		{
 			"Double 1234",
-			&xmlrpc.Value{Double: "1234.000000"},
+			&xmlrpc.Value{Double: "1234"},
 		},
 		{
 			"Double -9999.015625",
 			&xmlrpc.Value{Double: "-9999.015625"},
 		},
 		{
-			"Double 0.000001",
-			&xmlrpc.Value{Double: "0.000001"},
+			"Double 0.0000152587890625",
+			&xmlrpc.Value{Double: "0.0000152587890625"},
 		},
 		{
 			"Array",
@@ -78,7 +78,7 @@ func TestDecodeValue(t *testing.T) {
 			"Struct",
 			&xmlrpc.Value{Struct: &xmlrpc.Struct{Members: []*xmlrpc.Member{
 				{Name: "a", Value: &xmlrpc.Value{Boolean: "0"}},
-				{Name: "b", Value: &xmlrpc.Value{Double: "125.125000"}},
+				{Name: "b", Value: &xmlrpc.Value{Double: "125.125"}},
 				{Name: "c", Value: &xmlrpc.Value{I4: "125"}},
 			}}},
 		},
