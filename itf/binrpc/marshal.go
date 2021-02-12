@@ -56,16 +56,10 @@ func (e *Encoder) EncodeRequest(method string, params []*xmlrpc.Value) error {
 		return fmt.Errorf("Writing of payload size failed: %w", err)
 	}
 
-	// write method name
-	_, err = e.w.ReadFrom(&me)
+	// write method name and parameters
+	_, err = e.w.ReadFrom(io.MultiReader(&me, &pe))
 	if err != nil {
-		return fmt.Errorf("Writing of method name failed: %w", err)
-	}
-
-	// write parameters
-	_, err = e.w.ReadFrom(&pe)
-	if err != nil {
-		return fmt.Errorf("Writing of parameters failed: %w", err)
+		return fmt.Errorf("Writing of method name or parameters failed: %w", err)
 	}
 	return e.w.Flush()
 }
