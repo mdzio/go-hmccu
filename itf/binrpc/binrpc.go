@@ -19,6 +19,8 @@ const (
 	// support.
 	timeType   = 0x05
 	binaryType = 0x06
+
+	mantissaMultiplicator = 0x40000000
 )
 
 var (

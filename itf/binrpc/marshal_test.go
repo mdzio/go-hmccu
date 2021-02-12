@@ -110,6 +110,23 @@ func TestEncodeResponse(t *testing.T) {
 	}
 }
 
+func TestEncodeFault(t *testing.T) {
+	buf := bytes.Buffer{}
+	e := NewEncoder(&buf)
+	err := e.EncodeFault(&xmlrpc.MethodError{
+		Code:    -2,
+		Message: "Unknown instance",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "42696eff000000440000010100000002000000096661756c74436f646500000001fffffffe0000000b6661756c74537472696e670000000300000010556e6b6e6f776e20696e7374616e6365"
+	got := hex.EncodeToString(buf.Bytes())
+	if got != want {
+		t.Errorf("Expected: %s, got: %s", want, got)
+	}
+}
+
 func TestEncodeParam(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -119,82 +136,62 @@ func TestEncodeParam(t *testing.T) {
 	}{
 		{
 			"String BidCoS-RF",
-			xmlrpc.Value{
-				ElemString: "BidCoS-RF",
-			},
+			xmlrpc.Value{ElemString: "BidCoS-RF"},
 			"00 00 00 03 00 00 00 09 42 69 64 43 6f 53 2d 52 46",
 			false,
 		},
 		{
 			"String ISO8859-1 üöäÜÖÄß",
-			xmlrpc.Value{
-				FlatString: "üöäÜÖÄß",
-			},
+			xmlrpc.Value{FlatString: "üöäÜÖÄß"},
 			"00 00 00 03 00 00 00 07 fc f6 e4 dc d6 c4 df",
 			false,
 		},
 		{
 			"Integer 41",
-			xmlrpc.Value{
-				Int: "41",
-			},
+			xmlrpc.Value{Int: "41"},
 			"00 00 00 01 00 00 00 29",
 			false,
 		},
 		{
 			"Integer xx",
-			xmlrpc.Value{
-				Int: "xx",
-			},
+			xmlrpc.Value{Int: "xx"},
 			"",
 			true,
 		},
 
 		{
 			"Bool 0",
-			xmlrpc.Value{
-				Boolean: "0",
-			},
+			xmlrpc.Value{Boolean: "0"},
 			"00 00 00 02 00",
 			false,
 		},
 		{
 			"Bool 1",
-			xmlrpc.Value{
-				Boolean: "1",
-			},
+			xmlrpc.Value{Boolean: "1"},
 			"00 00 00 02 01",
 			false,
 		},
 		{
 			"Bool xx",
-			xmlrpc.Value{
-				Boolean: "xx",
-			},
+			xmlrpc.Value{Boolean: "xx"},
 			"",
 			true,
 		},
 		{
 			"Double 1234",
-			xmlrpc.Value{
-				Double: "1234",
-			},
+			xmlrpc.Value{Double: "1234"},
 			"00 00 00 04 26 90 00 00 00 00 00 0b",
 			false,
 		},
 		{
 			"Double -9999.9999",
-			xmlrpc.Value{
-				Double: "-9999.9999",
-			},
+			xmlrpc.Value{Double: "-9999.9999"},
 			"00 00 00 04 d8 f0 00 06 00 00 00 0e",
 			false,
 		},
 		{
 			"Double xx",
-			xmlrpc.Value{
-				Double: "xx",
-			},
+			xmlrpc.Value{Double: "xx"},
 			"",
 			true,
 		},
@@ -202,12 +199,7 @@ func TestEncodeParam(t *testing.T) {
 			"Struct {'Temperature': 20.5}",
 			xmlrpc.Value{
 				Struct: &xmlrpc.Struct{Members: []*xmlrpc.Member{
-					{
-						Name: "Temperature",
-						Value: &xmlrpc.Value{
-							Double: "20.5",
-						},
-					},
+					{Name: "Temperature", Value: &xmlrpc.Value{Double: "20.5"}},
 				}},
 			},
 			"00 00 01 01 00 00 00 01 00 00 00 0b 54 65 6d 70 65 72 61 74 75 72 65 00 00 00 04 29 00 00 00 00 00 00 05",
@@ -215,18 +207,10 @@ func TestEncodeParam(t *testing.T) {
 		},
 		{
 			"Array 41 41",
-			xmlrpc.Value{
-				Array: &xmlrpc.Array{
-					Data: []*xmlrpc.Value{
-						{
-							Int: "41",
-						},
-						{
-							Int: "41",
-						},
-					},
-				},
-			},
+			xmlrpc.Value{Array: &xmlrpc.Array{Data: []*xmlrpc.Value{
+				{Int: "41"},
+				{Int: "41"},
+			}}},
 			"00 00 01 00 00 00 00 02 00 00 00 01 00 00 00 29 00 00 00 01 00 00 00 29",
 			false,
 		},
