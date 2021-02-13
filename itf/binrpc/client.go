@@ -30,10 +30,7 @@ type Client struct {
 // Call executes an remote procedure call. Call implements xmlrpc.Caller.
 func (c *Client) Call(method string, params xmlrpc.Values) (*xmlrpc.Value, error) {
 	// log
-	if clnLog.TraceEnabled() {
-		clnLog.Tracef("Calling method %s on %s", method, c.Addr)
-		clnLog.Tracef("Parameters: %s", params)
-	}
+	clnLog.Debugf("Calling method %s on %s with parameters %v", method, c.Addr, params)
 
 	// open connection
 	conn, err := net.Dial("tcp", c.Addr)
@@ -80,8 +77,6 @@ func (c *Client) Call(method string, params xmlrpc.Values) (*xmlrpc.Value, error
 	}
 
 	// log
-	if clnLog.TraceEnabled() {
-		clnLog.Tracef("Result: %v", resp)
-	}
+	clnLog.Debugf("Result: %v", resp)
 	return resp, nil
 }
