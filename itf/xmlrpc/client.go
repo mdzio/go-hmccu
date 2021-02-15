@@ -63,7 +63,7 @@ func (c *Client) Call(method string, params Values) (*Value, error) {
 	}
 
 	// http post
-	httpResp, err := http.Post(c.Addr, "text/xml", bytes.NewReader(reqBuf.Bytes()))
+	httpResp, err := http.Post("http://"+c.Addr, "text/xml", bytes.NewReader(reqBuf.Bytes()))
 	if err != nil {
 		return nil, fmt.Errorf("HTTP request failed on %s: %v", c.Addr, err)
 	}

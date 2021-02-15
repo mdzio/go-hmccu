@@ -34,7 +34,7 @@ func (d *Decoder) DecodeRequest() (string, xmlrpc.Values, error) {
 
 	// check marker and message type
 	if hdr.Marker != binrpcMarker {
-		return "", nil, fmt.Errorf("Invalid start of header: %s", hex.EncodeToString(hdr.Marker[:]))
+		return "", nil, fmt.Errorf("Invalid start of header: %sh", hex.EncodeToString(hdr.Marker[:]))
 	}
 	if hdr.MsgType != msgTypeRequest {
 		return "", nil, fmt.Errorf("Invalid message type: %Xh", hdr.MsgType)

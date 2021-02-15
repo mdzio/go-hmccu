@@ -109,7 +109,7 @@ func (s *Server) handle(conn net.Conn) {
 	dec := NewDecoder(conn)
 	method, params, err := dec.DecodeRequest()
 	if err != nil {
-		svrLog.Errorf("Decoding of request from %s failed: %w", conn.RemoteAddr(), err)
+		svrLog.Errorf("Decoding of request from %s failed: %v", conn.RemoteAddr(), err)
 		return
 	}
 	svrLog.Debugf("Received call from %s of method %s with parameters %s", method, conn.RemoteAddr(), params)

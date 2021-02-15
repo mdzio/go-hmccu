@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mdzio/go-hmccu/itf/binrpc"
 	"github.com/mdzio/go-hmccu/itf/xmlrpc"
 	"github.com/mdzio/go-logging"
 )
@@ -32,6 +33,8 @@ const (
 	HmIPRF
 	// CCU2/3, RaspberryMatic with RF module
 	VirtualDevices
+	// CUxD add on
+	CUxD
 )
 
 var (
@@ -41,8 +44,9 @@ var (
 		System:         "System",
 		HmIPRF:         "HmIPRF",
 		VirtualDevices: "VirtualDevices",
+		CUxD:           "CUxD",
 	}
-	errInvalidItfType = errors.New("Invalid interface type identifier (expected: BidCosWired, BidCosRF, System, HmIPRF, VirtualDevices)")
+	errInvalidItfType = errors.New("Invalid interface type identifier (expected: BidCosWired, BidCosRF, System, HmIPRF, VirtualDevices, CUxD)")
 	errMissingItfType = errors.New("At least one interface type must be specified")
 )
 
@@ -108,49 +112,95 @@ type config struct {
 	reGaHssID string
 	path      string
 	port      int
+	cuxd      bool
 }
 
 var (
 	// configs holds the configurations of all CCU interfaces.
 	configs = []config{
-		BidCosWired:    {"BidCos-Wired", "", 2000},
-		BidCosRF:       {"BidCos-RF", "", 2001},
-		System:         {"System", "", 2002},
-		HmIPRF:         {"HmIP-RF", "", 2010},
-		VirtualDevices: {"VirtualDevices", "/groups", 9292},
+		BidCosWired:    {"BidCos-Wired", "", 2000, false},
+		BidCosRF:       {"BidCos-RF", "", 2001, false},
+		System:         {"System", "", 2002, false},
+		HmIPRF:         {"HmIP-RF", "", 2010, false},
+		VirtualDevices: {"VirtualDevices", "/groups", 9292, false},
+		CUxD:           {"CUxD", "", 8701, true},
 	}
 )
 
 // Interconnector gives access to the CCU data model and current data point
 // values.
 type Interconnector struct {
-	CCUAddr   string
-	Types     Types
-	IDPrefix  string
-	ServerURL string
-	Receiver  Receiver
+	CCUAddr  string
+	Types    Types
+	IDPrefix string
+	ServeErr chan<- error
+	// for callbacks from CCU
+	HostAddr   string
+	ServerURL  string
+	XMLRPCPort int
+	BINRPCPort int
+	// callback receiver
+	Receiver Receiver
 
-	clients map[string]*RegisteredClient
+	clients      map[string]*RegisteredClient
+	binrpcServer *binrpc.Server
 }
 
 // Start connects to the CCU and starts querying model and values. An additional
 // handler for XMLRPC ist registered at the DefaultServeMux.
 func (i *Interconnector) Start() {
+	// HM RPC dispatcher
+	dispatcher := NewDispatcher(i)
+
+	// start BIN-RPC server
+	binrpcServer := &binrpc.Server{
+		Dispatcher: dispatcher,
+		Addr:       ":" + strconv.Itoa(i.BINRPCPort),
+		ServeErr:   i.ServeErr,
+	}
+	err := binrpcServer.Start()
+	if err != nil {
+		// signal error, do not block
+		go func() { i.ServeErr <- err }()
+		return
+	}
+	i.binrpcServer = binrpcServer
+
+	// register XML-RPC handler at the HTTP server
+	httpHandler := &xmlrpc.Handler{Dispatcher: dispatcher}
+	http.Handle(rpcPath, httpHandler)
+
 	// create interface clients
 	i.clients = make(map[string]*RegisteredClient)
 	for _, itfType := range i.Types {
 		cfg := configs[itfType]
-		// create XML-RPC client
 		regID := i.IDPrefix + cfg.reGaHssID
-		addr := "http://" + i.CCUAddr + ":" + strconv.Itoa(cfg.port) + cfg.path
-		iLog.Infof("Creating interface client for %s, %s", addr, cfg.reGaHssID)
+		addr := i.CCUAddr + ":" + strconv.Itoa(cfg.port) + cfg.path
+		iLog.Infof("Creating interface client for %s: %s", addr, cfg.reGaHssID)
+
+		// CUXD BIN-RPC or standard XML-RPC?
+		var caller xmlrpc.Caller
+		var regAddr string
+		if cfg.cuxd {
+			// create BIN-RPC client
+			caller = &binrpc.Client{Addr: addr}
+			regAddr = "binary://" + i.HostAddr + ":" + strconv.Itoa(i.BINRPCPort)
+			// CUxD can only send this ID
+			regID = "CUxD"
+		} else {
+			// create standard XML-RPC client
+			caller = &xmlrpc.Client{Addr: addr}
+			regAddr = "http://" + i.HostAddr + ":" + strconv.Itoa(i.XMLRPCPort) + rpcPath
+		}
+
+		// create client
 		cln := &Client{
 			Name:   addr,
-			Caller: &xmlrpc.Client{Addr: addr},
+			Caller: caller,
 		}
 		itf := &RegisteredClient{
 			Client:          cln,
-			RegistrationURL: i.ServerURL + rpcPath,
+			RegistrationURL: regAddr,
 			RegistrationID:  regID,
 			ReGaHssID:       cfg.reGaHssID,
 		}
@@ -158,16 +208,21 @@ func (i *Interconnector) Start() {
 		i.clients[regID] = itf
 	}
 
-	// HM RPC dispatcher
-	dispatcher := NewDispatcher(i)
-
-	// register XML-RPC handler at the HTTP server
-	httpHandler := &xmlrpc.Handler{Dispatcher: dispatcher}
-	http.Handle(rpcPath, httpHandler)
-
 	// register at the CCU interfaces
 	for _, c := range i.clients {
 		c.Start()
+		// simulate NewDevices callback for CUxD
+		if c.ReGaHssID == "CUxD" {
+			devices, err := c.Client.ListDevices()
+			if err != nil {
+				iLog.Errorf("List devices failed on CUxD: %v", err)
+				continue
+			}
+			err = i.NewDevices(c.RegistrationID, devices)
+			if err != nil {
+				iLog.Errorf("Callback for new devices failed: %v", err)
+			}
+		}
 	}
 }
 
@@ -178,10 +233,12 @@ func (i *Interconnector) Stop() {
 		itfClient.Stop()
 	}
 
-	// unregister XMLRPC handler
-	// A registered handler at the http.ServeMux can not be unregistered. Maybe
-	// a switchable handler should be used, which is always be registered and
-	// can be temporarily switched to a not-found handler.
+	// stop BIN-RPC server, if started
+	if i.binrpcServer != nil {
+		i.binrpcServer.Stop()
+	}
+
+	// A registered handler at the http.ServeMux can not be unregistered.
 }
 
 // Client returns the specified interface client.
