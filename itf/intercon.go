@@ -174,23 +174,22 @@ func (i *Interconnector) Start() {
 	i.clients = make(map[string]*RegisteredClient)
 	for _, itfType := range i.Types {
 		cfg := configs[itfType]
-		regID := i.IDPrefix + cfg.reGaHssID
 		addr := i.CCUAddr + ":" + strconv.Itoa(cfg.port) + cfg.path
 		iLog.Infof("Creating interface client for %s: %s", addr, cfg.reGaHssID)
 
 		// CUXD BIN-RPC or standard XML-RPC?
 		var caller xmlrpc.Caller
-		var regAddr string
+		var regAddr, regID string
 		if cfg.cuxd {
 			// create BIN-RPC client
 			caller = &binrpc.Client{Addr: addr}
 			regAddr = "binary://" + i.HostAddr + ":" + strconv.Itoa(i.BINRPCPort)
-			// CUxD can only send this ID
-			regID = "CUxD"
+			regID = cfg.reGaHssID // ID can not be customized with CUxD
 		} else {
 			// create standard XML-RPC client
 			caller = &xmlrpc.Client{Addr: addr}
 			regAddr = "http://" + i.HostAddr + ":" + strconv.Itoa(i.XMLRPCPort) + rpcPath
+			regID = i.IDPrefix + cfg.reGaHssID
 		}
 
 		// create client
@@ -212,7 +211,7 @@ func (i *Interconnector) Start() {
 	for _, c := range i.clients {
 		c.Start()
 		// simulate NewDevices callback for CUxD
-		if c.ReGaHssID == "CUxD" {
+		if c.ReGaHssID == configs[int(CUxD)].reGaHssID {
 			devices, err := c.Client.ListDevices()
 			if err != nil {
 				iLog.Errorf("List devices failed on CUxD: %v", err)

@@ -5,7 +5,7 @@ go-hmccu provides functionality in the programming language [Go](https://golang.
 ## Authors
 
 * [Mathias Dz.](https://github.com/mdzio)
-* [twendt](https://github.com/twendt)
+* [twendt](https://github.com/twendt) (BIN-RPC for CUxD)
 
 ## License
 

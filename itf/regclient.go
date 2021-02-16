@@ -47,7 +47,7 @@ func (i *RegisteredClient) Start() {
 			if !i.timer.Stop() {
 				<-i.timer.C
 			}
-			clnLog.Trace("Stopping interface ", i.ReGaHssID)
+			clnLog.Trace("Interface stopped: ", i.ReGaHssID)
 			i.stopped <- struct{}{}
 		}()
 

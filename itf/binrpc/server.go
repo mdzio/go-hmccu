@@ -112,7 +112,7 @@ func (s *Server) handle(conn net.Conn) {
 		svrLog.Errorf("Decoding of request from %s failed: %v", conn.RemoteAddr(), err)
 		return
 	}
-	svrLog.Debugf("Received call from %s of method %s with parameters %s", method, conn.RemoteAddr(), params)
+	svrLog.Tracef("Received call from %s of method %s with parameters %s", method, conn.RemoteAddr(), params)
 
 	// repack params as xmlrpc.Array
 	args := &xmlrpc.Value{
@@ -135,7 +135,7 @@ func (s *Server) handle(conn net.Conn) {
 			svrLog.Errorf("Encoding of fault response %v failed: %v", merr, err)
 			return
 		}
-		svrLog.Debugf("Sending response to %s: %v", conn.RemoteAddr(), merr)
+		svrLog.Tracef("Sending response to %s: %v", conn.RemoteAddr(), merr)
 	} else {
 		// encode method result
 		err := e.EncodeResponse(res)
@@ -143,7 +143,7 @@ func (s *Server) handle(conn net.Conn) {
 			svrLog.Errorf("Encoding of response %v failed: %v", res, err)
 			return
 		}
-		svrLog.Debugf("Sending response to %s: %v", conn.RemoteAddr(), res)
+		svrLog.Tracef("Sending response to %s: %v", conn.RemoteAddr(), res)
 	}
 
 	// send response
