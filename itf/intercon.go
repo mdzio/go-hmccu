@@ -139,8 +139,8 @@ type Interconnector struct {
 	ServerURL  string
 	XMLRPCPort int
 	BINRPCPort int
-	// callback receiver
-	Receiver Receiver
+	// notification handler
+	NotificationHandler NotificationHandler
 
 	clients      map[string]*RegisteredClient
 	binrpcServer *binrpc.Server
@@ -183,7 +183,7 @@ func (i *Interconnector) Start() {
 		if cfg.cuxd {
 			// create BIN-RPC client
 			caller = &binrpc.Client{Addr: addr}
-			regAddr = "binary://" + i.HostAddr + ":" + strconv.Itoa(i.BINRPCPort)
+			regAddr = "xmlrpc_bin://" + i.HostAddr + ":" + strconv.Itoa(i.BINRPCPort)
 			regID = cfg.reGaHssID // ID can not be customized with CUxD
 		} else {
 			// create standard XML-RPC client
@@ -269,7 +269,7 @@ func (i *Interconnector) Event(interfaceID, address, valueKey string, value inte
 	}
 
 	// forward
-	return i.Receiver.Event(interfaceID, address, valueKey, value)
+	return i.NotificationHandler.Event(interfaceID, address, valueKey, value)
 }
 
 // NewDevices implements interface hmccu.Receiver.
@@ -277,7 +277,7 @@ func (i *Interconnector) NewDevices(interfaceID string, devDescriptions []*Devic
 	i.callbackReceived(interfaceID)
 
 	// forward
-	return i.Receiver.NewDevices(interfaceID, devDescriptions)
+	return i.NotificationHandler.NewDevices(interfaceID, devDescriptions)
 }
 
 // DeleteDevices implements interface hmccu.Receiver.
@@ -285,7 +285,7 @@ func (i *Interconnector) DeleteDevices(interfaceID string, addresses []string) e
 	i.callbackReceived(interfaceID)
 
 	// forward
-	return i.Receiver.DeleteDevices(interfaceID, addresses)
+	return i.NotificationHandler.DeleteDevices(interfaceID, addresses)
 }
 
 // UpdateDevice implements interface hmccu.Receiver.
@@ -293,7 +293,7 @@ func (i *Interconnector) UpdateDevice(interfaceID, address string, hint int) err
 	i.callbackReceived(interfaceID)
 
 	// forward
-	return i.Receiver.UpdateDevice(interfaceID, address, hint)
+	return i.NotificationHandler.UpdateDevice(interfaceID, address, hint)
 }
 
 // ReplaceDevice implements interface hmccu.Receiver.
@@ -301,7 +301,7 @@ func (i *Interconnector) ReplaceDevice(interfaceID, oldDeviceAddress, newDeviceA
 	i.callbackReceived(interfaceID)
 
 	// forward
-	return i.Receiver.ReplaceDevice(interfaceID, oldDeviceAddress, newDeviceAddress)
+	return i.NotificationHandler.ReplaceDevice(interfaceID, oldDeviceAddress, newDeviceAddress)
 }
 
 // ReaddedDevice implements interface hmccu.Receiver.
@@ -309,5 +309,5 @@ func (i *Interconnector) ReaddedDevice(interfaceID string, deletedAddresses []st
 	i.callbackReceived(interfaceID)
 
 	// forward
-	return i.Receiver.ReaddedDevice(interfaceID, deletedAddresses)
+	return i.NotificationHandler.ReaddedDevice(interfaceID, deletedAddresses)
 }
