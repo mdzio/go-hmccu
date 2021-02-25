@@ -61,7 +61,13 @@ func NewDispatcher(nh NotificationHandler) *xmlrpc.Dispatcher {
 		return &xmlrpc.Value{FlatString: ""}, nil
 	})
 
-	// attention: this implementation returns always an empty device list.
+	// This method returns all the devices known to the logic layer for the
+	// interface process with the the ID interface_id in the form of device
+	// descriptions. This allows the interface process to perform a comparison by
+	// calling newDevices() and deleteDevices(). For this to work, the logic layer
+	// must remember this information at least partially. It is sufficient if the
+	// ADDRESS and VERSION members of a device description are set.
+	// Attention: This implementation returns always an empty device list.
 	d.HandleFunc("listDevices", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
 		q := xmlrpc.Q(args)
 		if len(q.Slice()) != 1 {
