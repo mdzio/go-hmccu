@@ -26,7 +26,7 @@ const (
 )
 
 func newXMLTestClient(t *testing.T) *Client {
-	addr := "http://" + testutil.Config(t, ccuAddress) + ":2001"
+	addr := testutil.Config(t, ccuAddress) + ":2001"
 	return &Client{
 		Name:   addr,
 		Caller: &xmlrpc.Client{Addr: addr},

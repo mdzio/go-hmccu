@@ -14,9 +14,9 @@ func TestServer(t *testing.T) {
 	svr := &Server{
 		Addr:       ":2123",
 		ServeErr:   serr,
-		Dispatcher: &xmlrpc.Dispatcher{},
+		Dispatcher: &xmlrpc.BasicDispatcher{},
 	}
-	svr.SystemMethods()
+	svr.AddSystemMethods()
 	svr.HandleFunc("echo", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
 		q := xmlrpc.Q(args)
 		if len(q.Slice()) != 1 {

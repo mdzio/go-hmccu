@@ -22,7 +22,7 @@ var svrLog = logging.Get("xmlrpc-server")
 // calls are dispatched to the registered Method's.
 type Handler struct {
 	RequestSizeLimit int64
-	*Dispatcher
+	Dispatcher
 }
 
 func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {

@@ -3,6 +3,7 @@ package itf
 import (
 	"fmt"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/mdzio/go-hmccu/itf/xmlrpc"
@@ -48,13 +49,15 @@ func (r *receiver) ReaddedDevice(interfaceID string, deletedAddresses []string) 
 
 func TestServer(t *testing.T) {
 	r := &receiver{}
-	h := &xmlrpc.Handler{Dispatcher: NewDispatcher(r)}
+	d := NewDispatcher()
+	d.AddLogicLayer(r)
+	h := &xmlrpc.Handler{Dispatcher: d}
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
 	cln := Client{
 		Name:   srv.URL,
-		Caller: &xmlrpc.Client{Addr: srv.URL},
+		Caller: &xmlrpc.Client{Addr: strings.TrimPrefix(srv.URL, "http://")},
 	}
 
 	cases := []struct {

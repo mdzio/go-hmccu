@@ -134,13 +134,13 @@ type Interconnector struct {
 	Types    Types
 	IDPrefix string
 	ServeErr chan<- error
-	// for callbacks from CCU
+	// for callbacks from CCU interface processes
 	HostAddr   string
 	ServerURL  string
 	XMLRPCPort int
 	BINRPCPort int
-	// notification handler
-	NotificationHandler NotificationHandler
+	// the Logiclayer receives the callbacks
+	LogicLayer LogicLayer
 
 	clients      map[string]*RegisteredClient
 	binrpcServer *binrpc.Server
@@ -150,7 +150,8 @@ type Interconnector struct {
 // handler for XMLRPC ist registered at the DefaultServeMux.
 func (i *Interconnector) Start() {
 	// HM RPC dispatcher
-	dispatcher := NewDispatcher(i)
+	dispatcher := NewDispatcher()
+	dispatcher.AddLogicLayer(i)
 
 	// start BIN-RPC server
 	binrpcServer := &binrpc.Server{
@@ -269,7 +270,7 @@ func (i *Interconnector) Event(interfaceID, address, valueKey string, value inte
 	}
 
 	// forward
-	return i.NotificationHandler.Event(interfaceID, address, valueKey, value)
+	return i.LogicLayer.Event(interfaceID, address, valueKey, value)
 }
 
 // NewDevices implements interface hmccu.Receiver.
@@ -277,7 +278,7 @@ func (i *Interconnector) NewDevices(interfaceID string, devDescriptions []*Devic
 	i.callbackReceived(interfaceID)
 
 	// forward
-	return i.NotificationHandler.NewDevices(interfaceID, devDescriptions)
+	return i.LogicLayer.NewDevices(interfaceID, devDescriptions)
 }
 
 // DeleteDevices implements interface hmccu.Receiver.
@@ -285,7 +286,7 @@ func (i *Interconnector) DeleteDevices(interfaceID string, addresses []string) e
 	i.callbackReceived(interfaceID)
 
 	// forward
-	return i.NotificationHandler.DeleteDevices(interfaceID, addresses)
+	return i.LogicLayer.DeleteDevices(interfaceID, addresses)
 }
 
 // UpdateDevice implements interface hmccu.Receiver.
@@ -293,7 +294,7 @@ func (i *Interconnector) UpdateDevice(interfaceID, address string, hint int) err
 	i.callbackReceived(interfaceID)
 
 	// forward
-	return i.NotificationHandler.UpdateDevice(interfaceID, address, hint)
+	return i.LogicLayer.UpdateDevice(interfaceID, address, hint)
 }
 
 // ReplaceDevice implements interface hmccu.Receiver.
@@ -301,7 +302,7 @@ func (i *Interconnector) ReplaceDevice(interfaceID, oldDeviceAddress, newDeviceA
 	i.callbackReceived(interfaceID)
 
 	// forward
-	return i.NotificationHandler.ReplaceDevice(interfaceID, oldDeviceAddress, newDeviceAddress)
+	return i.LogicLayer.ReplaceDevice(interfaceID, oldDeviceAddress, newDeviceAddress)
 }
 
 // ReaddedDevice implements interface hmccu.Receiver.
@@ -309,5 +310,5 @@ func (i *Interconnector) ReaddedDevice(interfaceID string, deletedAddresses []st
 	i.callbackReceived(interfaceID)
 
 	// forward
-	return i.NotificationHandler.ReaddedDevice(interfaceID, deletedAddresses)
+	return i.LogicLayer.ReaddedDevice(interfaceID, deletedAddresses)
 }

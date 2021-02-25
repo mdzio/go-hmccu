@@ -22,7 +22,7 @@ var svrLog = logging.Get("binrpc-server")
 
 // Server is a BIN-RPC server.
 type Server struct {
-	*xmlrpc.Dispatcher
+	xmlrpc.Dispatcher
 	Addr             string
 	ServeErr         chan<- error
 	RequestSizeLimit int64

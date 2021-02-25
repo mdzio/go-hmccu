@@ -9,8 +9,8 @@ import (
 
 var svrLog = logging.Get("itf-server")
 
-// A NotificationHandler handles notifications from the CCU.
-type NotificationHandler interface {
+// A LogicLayer handles notifications from interface processes (of the CCU).
+type LogicLayer interface {
 	// A value has changed.
 	Event(interfaceID, address, valueKey string, value interface{}) error
 
@@ -30,17 +30,28 @@ type NotificationHandler interface {
 	// ReaddedDevice is called, when an already connected device is paired again
 	// with the CCU. Deleted logical devices are listed in deletedAddresses.
 	ReaddedDevice(interfaceID string, deletedAddresses []string) error
+
+	// ListDevices is not forwarded.
 }
 
-// NewDispatcher creates a new Dispatcher with HM specific RPC functions (e.g.
-// event), which forwards calls to a Receiver. After calling init on BidCos-RF
-// normally following callbacks happen: system.listMethods, listDevices,
-// newDevices and system.multicall with event's. Attention: listDevices is not
-// forwarded to the receiver and returns always an empty device list to the CCU.
-func NewDispatcher(nh NotificationHandler) *xmlrpc.Dispatcher {
-	d := &xmlrpc.Dispatcher{}
-	d.SystemMethods()
+// Dispatcher is an extended xmlrpc.Dispatcher for HM.
+type Dispatcher struct {
+	xmlrpc.BasicDispatcher
+}
 
+// NewDispatcher creates a new Dispatcher with HM specific RPC functions.
+func NewDispatcher() *Dispatcher {
+	d := &Dispatcher{}
+	d.AddSystemMethods()
+	return d
+}
+
+// AddLogicLayer adds handlers for a logic layer.
+// After calling init on BidCos-RF normally following callbacks happen:
+// system.listMethods, listDevices, newDevices and system.multicall with
+// event's. Attention: listDevices is not forwarded to the receiver and returns
+// always an empty device list to the interface process.
+func (d *Dispatcher) AddLogicLayer(ll LogicLayer) {
 	d.HandleFunc("event", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
 		q := xmlrpc.Q(args)
 		if len(q.Slice()) != 4 {
@@ -54,7 +65,7 @@ func NewDispatcher(nh NotificationHandler) *xmlrpc.Dispatcher {
 			return nil, fmt.Errorf("Invalid argument for event method: %v", q.Err())
 		}
 		svrLog.Debugf("Call of method event received: %s, %s, %s, %v", interfaceID, address, valueKey, value)
-		err := nh.Event(interfaceID, address, valueKey, value)
+		err := ll.Event(interfaceID, address, valueKey, value)
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +112,7 @@ func NewDispatcher(nh NotificationHandler) *xmlrpc.Dispatcher {
 			}
 			descr = append(descr, d)
 		}
-		err := nh.NewDevices(interfaceID, descr)
+		err := ll.NewDevices(interfaceID, descr)
 		if err != nil {
 			return nil, err
 		}
@@ -123,7 +134,7 @@ func NewDispatcher(nh NotificationHandler) *xmlrpc.Dispatcher {
 			return nil, fmt.Errorf("Invalid argument(s) for deleteDevices method: %v", q.Err())
 		}
 		svrLog.Debugf("Call of method deleteDevices received: %s, %v", interfaceID, addresses)
-		err := nh.DeleteDevices(interfaceID, addresses)
+		err := ll.DeleteDevices(interfaceID, addresses)
 		if err != nil {
 			return nil, err
 		}
@@ -142,7 +153,7 @@ func NewDispatcher(nh NotificationHandler) *xmlrpc.Dispatcher {
 			return nil, fmt.Errorf("Invalid argument(s) for updateDevice method: %v", q.Err())
 		}
 		svrLog.Debugf("Call of method updateDevice received: %s, %s, %d", interfaceID, address, hint)
-		err := nh.UpdateDevice(interfaceID, address, hint)
+		err := ll.UpdateDevice(interfaceID, address, hint)
 		if err != nil {
 			return nil, err
 		}
@@ -161,7 +172,7 @@ func NewDispatcher(nh NotificationHandler) *xmlrpc.Dispatcher {
 			return nil, fmt.Errorf("Invalid argument(s) for replaceDevice method: %v", q.Err())
 		}
 		svrLog.Debugf("Call of method replaceDevice received: %s, %s, %s", interfaceID, oldDeviceAddress, newDeviceAddress)
-		err := nh.ReplaceDevice(interfaceID, oldDeviceAddress, newDeviceAddress)
+		err := ll.ReplaceDevice(interfaceID, oldDeviceAddress, newDeviceAddress)
 		if err != nil {
 			return nil, err
 		}
@@ -183,12 +194,10 @@ func NewDispatcher(nh NotificationHandler) *xmlrpc.Dispatcher {
 			return nil, fmt.Errorf("Invalid argument(s) for readdedDevice method: %v", q.Err())
 		}
 		svrLog.Debugf("Call of method readdedDevice received: %s, %v", interfaceID, addresses)
-		err := nh.ReaddedDevice(interfaceID, addresses)
+		err := ll.ReaddedDevice(interfaceID, addresses)
 		if err != nil {
 			return nil, err
 		}
 		return &xmlrpc.Value{FlatString: ""}, nil
 	})
-
-	return d
 }

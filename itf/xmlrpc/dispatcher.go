@@ -5,8 +5,17 @@ import (
 	"sync"
 )
 
-// Dispatcher dispatches an XML-RPC call to a registered function.
-type Dispatcher struct {
+// Dispatcher dispatches a received XML-RPC call to registered handlers.
+type Dispatcher interface {
+	AddSystemMethods()
+	Handle(name string, m Method)
+	HandleFunc(name string, f func(*Value) (*Value, error))
+	HandleUnknownFunc(f func(string, *Value) (*Value, error))
+	Dispatch(methodName string, args *Value) (*Value, error)
+}
+
+// BasicDispatcher dispatches an XML-RPC call to a registered function.
+type BasicDispatcher struct {
 	mutex   sync.RWMutex
 	methods map[string]Method
 	unknown func(string, *Value) (*Value, error)
@@ -26,7 +35,7 @@ func (m MethodFunc) Call(args *Value) (*Value, error) {
 }
 
 // Handle registers a Method.
-func (d *Dispatcher) Handle(name string, m Method) {
+func (d *BasicDispatcher) Handle(name string, m Method) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
@@ -37,21 +46,21 @@ func (d *Dispatcher) Handle(name string, m Method) {
 }
 
 // HandleFunc registers an ordinary function as Method.
-func (d *Dispatcher) HandleFunc(name string, f func(*Value) (*Value, error)) {
+func (d *BasicDispatcher) HandleFunc(name string, f func(*Value) (*Value, error)) {
 	d.Handle(name, MethodFunc(f))
 }
 
 // HandleUnknownFunc registers an ordinary function to handle unknown methods
 // names.
-func (d *Dispatcher) HandleUnknownFunc(f func(string, *Value) (*Value, error)) {
+func (d *BasicDispatcher) HandleUnknownFunc(f func(string, *Value) (*Value, error)) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
 	d.unknown = f
 }
 
-// SystemMethods adds system.multicall and system.listMethods.
-func (d *Dispatcher) SystemMethods() {
+// AddSystemMethods adds system.multicall and system.listMethods.
+func (d *BasicDispatcher) AddSystemMethods() {
 
 	// attention: currently if one methods fails, the complete multicall fails.
 	d.HandleFunc(
@@ -99,7 +108,7 @@ func (d *Dispatcher) SystemMethods() {
 }
 
 // Dispatch dispatches a method call to a registered function.
-func (d *Dispatcher) Dispatch(methodName string, args *Value) (*Value, error) {
+func (d *BasicDispatcher) Dispatch(methodName string, args *Value) (*Value, error) {
 	d.mutex.RLock()
 	method, ok := d.methods[methodName]
 	unknown := d.unknown

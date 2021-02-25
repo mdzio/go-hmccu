@@ -6,11 +6,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
 func TestServerBadRequest(t *testing.T) {
-	h := &Handler{Dispatcher: &Dispatcher{}}
+	h := &Handler{Dispatcher: &BasicDispatcher{}}
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
@@ -30,11 +31,11 @@ func TestServerBadRequest(t *testing.T) {
 }
 
 func TestServerUnknownMethod(t *testing.T) {
-	h := &Handler{Dispatcher: &Dispatcher{}}
+	h := &Handler{Dispatcher: &BasicDispatcher{}}
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
-	cln := Client{Addr: srv.URL}
+	cln := Client{Addr: strings.TrimPrefix(srv.URL, "http://")}
 
 	res, err := cln.Call("unknownMethod", []*Value{})
 	if res != nil {
@@ -53,8 +54,8 @@ func TestServerUnknownMethod(t *testing.T) {
 }
 
 func TestServer(t *testing.T) {
-	h := &Handler{Dispatcher: &Dispatcher{}}
-	h.SystemMethods()
+	h := &Handler{Dispatcher: &BasicDispatcher{}}
+	h.AddSystemMethods()
 	h.HandleFunc("echo", func(args *Value) (*Value, error) {
 		q := Q(args)
 		if len(q.Slice()) != 1 {
@@ -65,7 +66,7 @@ func TestServer(t *testing.T) {
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
-	cln := Client{Addr: srv.URL}
+	cln := Client{Addr: strings.TrimPrefix(srv.URL, "http://")}
 
 	resp, err := cln.Call("echo", []*Value{{Int: "123"}})
 	if err != nil {
@@ -111,8 +112,8 @@ func TestServer(t *testing.T) {
 }
 
 func TestServerMulticall(t *testing.T) {
-	h := &Handler{Dispatcher: &Dispatcher{}}
-	h.SystemMethods()
+	h := &Handler{Dispatcher: &BasicDispatcher{}}
+	h.AddSystemMethods()
 	h.HandleFunc("echo", func(args *Value) (*Value, error) {
 		q := Q(args)
 		if len(q.Slice()) != 1 {
@@ -122,7 +123,7 @@ func TestServerMulticall(t *testing.T) {
 	})
 	srv := httptest.NewServer(h)
 	defer srv.Close()
-	cln := Client{Addr: srv.URL}
+	cln := Client{Addr: strings.TrimPrefix(srv.URL, "http://")}
 
 	resp, err := cln.Call("system.multicall", []*Value{
 		{
@@ -193,7 +194,7 @@ func TestServerMulticall(t *testing.T) {
 }
 
 func TestServerWithUnknownMethod(t *testing.T) {
-	h := &Handler{Dispatcher: &Dispatcher{}}
+	h := &Handler{Dispatcher: &BasicDispatcher{}}
 	h.HandleUnknownFunc(func(name string, _ *Value) (*Value, error) {
 		v, _ := NewValue("Method " + name + " called")
 		return v, nil
@@ -201,7 +202,7 @@ func TestServerWithUnknownMethod(t *testing.T) {
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
-	cln := Client{Addr: srv.URL}
+	cln := Client{Addr: strings.TrimPrefix(srv.URL, "http://")}
 
 	res, err := cln.Call("42", []*Value{})
 	if err != nil {

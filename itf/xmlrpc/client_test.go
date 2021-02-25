@@ -16,7 +16,7 @@ const (
 
 func itfAddress(t *testing.T) string {
 	// use BidCos-RF XML-RPC interface
-	return "http://" + testutil.Config(t, ccuAddress) + ":2001"
+	return testutil.Config(t, ccuAddress) + ":2001"
 }
 
 func TestClient_Call(t *testing.T) {
