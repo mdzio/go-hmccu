@@ -81,6 +81,13 @@ func (d *DeviceDescription) ReadFrom(e *xmlrpc.Query) {
 	d.RXMode = e.TryKey("RX_MODE").Int()
 }
 
+// SpecialValue defines a special value für an INTEGER or FLOAT. Value must be
+// of type int or float64.
+type SpecialValue struct {
+	ID    string
+	Value interface{}
+}
+
 // ParameterDescription describes a single parameter.
 type ParameterDescription struct {
 	// FLOAT, INTEGER, BOOL, ENUM, STRING, ACTION
@@ -100,14 +107,11 @@ type ParameterDescription struct {
 	Control  string
 	ID       string
 
-	// Special parameters for Type=FLOAT:
-	// ...
+	// Only for type FLOAT or INTEGER
+	Special []SpecialValue
 
-	// Special parameters for Type=INT:
-	// ...
-
-	// Special parameters for Type=ENUM:
-	// ...
+	// Only for type ENUM
+	ValueList []string
 }
 
 // ReadFrom reads the field values from an xmlrpc.Query.
@@ -122,6 +126,24 @@ func (p *ParameterDescription) ReadFrom(e *xmlrpc.Query) {
 	p.TabOrder = e.TryKey("TAB_ORDER").Int()
 	p.Control = e.TryKey("CONTROL").String()
 	p.ID = e.TryKey("ID").String()
+
+	// read specials
+	switch p.Type {
+	case "FLOAT":
+		for _, s := range e.TryKey("SPECIAL").Slice() {
+			id := s.Key("ID").String()
+			val := s.Key("VALUE").Float64()
+			p.Special = append(p.Special, SpecialValue{id, val})
+		}
+	case "INTEGER":
+		for _, s := range e.TryKey("SPECIAL").Slice() {
+			id := s.Key("ID").String()
+			val := s.Key("VALUE").Int()
+			p.Special = append(p.Special, SpecialValue{id, val})
+		}
+	case "ENUM":
+		p.ValueList = e.TryKey("VALUE_LIST").Strings()
+	}
 }
 
 // ParamsetDescription describes a parameter set (e.g. VALUES) of a device.
