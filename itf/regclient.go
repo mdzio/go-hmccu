@@ -16,7 +16,7 @@ const (
 // RegisteredClient provides access to a CCU interface process. The registration state is
 // monitored and reestablished on time out.
 type RegisteredClient struct {
-	*Client
+	*DeviceLayerClient
 	RegistrationURL string
 	RegistrationID  string
 	ReGaHssID       string
@@ -39,7 +39,7 @@ func (i *RegisteredClient) Setup() {
 // Start registers at the CCU interface process and starts monitoring.
 func (i *RegisteredClient) Start() {
 	go func() {
-		clnLog.Debug("Starting interface ", i.ReGaHssID)
+		dclnLog.Debug("Starting interface ", i.ReGaHssID)
 
 		// defer clean up
 		defer func() {
@@ -47,7 +47,7 @@ func (i *RegisteredClient) Start() {
 			if !i.timer.Stop() {
 				<-i.timer.C
 			}
-			clnLog.Trace("Interface stopped: ", i.ReGaHssID)
+			dclnLog.Trace("Interface stopped: ", i.ReGaHssID)
 			i.stopped <- struct{}{}
 		}()
 
@@ -87,9 +87,9 @@ func (i *RegisteredClient) Start() {
 			// ping
 			ok, err := i.Ping(i.RegistrationID + "-Ping")
 			if err != nil {
-				clnLog.Warning(err)
+				dclnLog.Warning(err)
 			} else if !ok {
-				clnLog.Warning("Ping returned a failure")
+				dclnLog.Warning("Ping returned a failure")
 			}
 			i.timer.Reset(pingTimeout)
 
@@ -101,7 +101,7 @@ func (i *RegisteredClient) Start() {
 				// ping received
 			case <-i.timer.C:
 				// register again, if ping timed out
-				clnLog.Errorf("CCU interface %s timed out", i.ReGaHssID)
+				dclnLog.Errorf("CCU interface %s timed out", i.ReGaHssID)
 				i.register()
 			}
 			i.timer.Reset(callbackTimeout)
@@ -129,13 +129,13 @@ func (i *RegisteredClient) CallbackReceived() {
 func (i *RegisteredClient) register() {
 	// register for callbacks (events, ...)
 	if err := i.Init(i.RegistrationURL, i.RegistrationID); err != nil {
-		clnLog.Warning(err)
+		dclnLog.Warning(err)
 	}
 }
 
 func (i *RegisteredClient) unregister() {
 	// stop callbacks
 	if err := i.Deinit(i.RegistrationURL); err != nil {
-		clnLog.Warning(err)
+		dclnLog.Warning(err)
 	}
 }

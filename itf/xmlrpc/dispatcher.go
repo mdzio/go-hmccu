@@ -105,6 +105,15 @@ func (d *BasicDispatcher) AddSystemMethods() {
 			return &Value{Array: &Array{names}}, nil
 		},
 	)
+
+	// attention: This implementation returns always an empty string.
+	d.HandleFunc(
+		"system.methodHelp",
+		func(*Value) (*Value, error) {
+			svrLog.Debug("Call of method system.methodHelp received")
+			return &Value{}, nil
+		},
+	)
 }
 
 // Dispatch dispatches a method call to a registered function.

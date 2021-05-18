@@ -194,15 +194,15 @@ func (i *Interconnector) Start() {
 		}
 
 		// create client
-		cln := &Client{
+		cln := &DeviceLayerClient{
 			Name:   addr,
 			Caller: caller,
 		}
 		itf := &RegisteredClient{
-			Client:          cln,
-			RegistrationURL: regAddr,
-			RegistrationID:  regID,
-			ReGaHssID:       cfg.reGaHssID,
+			DeviceLayerClient: cln,
+			RegistrationURL:   regAddr,
+			RegistrationID:    regID,
+			ReGaHssID:         cfg.reGaHssID,
 		}
 		itf.Setup()
 		i.clients[regID] = itf
@@ -213,7 +213,7 @@ func (i *Interconnector) Start() {
 		c.Start()
 		// simulate NewDevices callback for CUxD
 		if c.ReGaHssID == configs[int(CUxD)].reGaHssID {
-			devices, err := c.Client.ListDevices()
+			devices, err := c.ListDevices()
 			if err != nil {
 				iLog.Errorf("List devices failed on CUxD: %v", err)
 				continue

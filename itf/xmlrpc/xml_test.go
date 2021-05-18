@@ -522,6 +522,8 @@ func TestQuery_Any(t *testing.T) {
 		{&Value{Double: "123.456"}, 123.456, false},
 		{&Value{FlatString: "abc"}, "abc", false},
 		{&Value{Double: "a"}, 0, true},
+		{&Value{Struct: &Struct{}}, nil, true},
+		{&Value{Array: &Array{}}, nil, true},
 		{nil, nil, false},
 	}
 	for _, c := range cases {

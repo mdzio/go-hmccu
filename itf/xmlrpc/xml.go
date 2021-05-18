@@ -292,7 +292,7 @@ func (q *Query) Float64() float64 {
 }
 
 // Any returns data type int, bool, float64, string or nil for an empty
-// optional.
+// optional. For Struct or Array an error is set.
 func (q *Query) Any() interface{} {
 	// previous error or empty optional?
 	if q.Err() != nil || q.value == nil {
@@ -305,6 +305,12 @@ func (q *Query) Any() interface{} {
 		return q.Bool()
 	} else if q.value.Double != "" {
 		return q.Float64()
+	} else if q.value.Struct != nil {
+		*q.err = errors.New("Unexpected struct")
+		return nil
+	} else if q.value.Array != nil {
+		*q.err = errors.New("Unexpected array")
+		return nil
 	}
 	return q.String()
 }
@@ -425,53 +431,90 @@ func (q *Query) Value() *Value {
 	return q.value
 }
 
+// NewBool creates an xmlrpc.Value from a bool.
+func NewBool(val bool) *Value {
+	out := &Value{}
+	if val {
+		out.Boolean = "1"
+	} else {
+		out.Boolean = "0"
+	}
+	return out
+}
+
+// NewInt creates an xmlrpc.Value from an int.
+func NewInt(val int) *Value {
+	return &Value{I4: strconv.Itoa(val)}
+}
+
+// NewFloat64 creates an xmlrpc.Value from a float64.
+func NewFloat64(val float64) *Value {
+	return &Value{Double: strconv.FormatFloat(val, 'f', -1, 64)}
+}
+
+// NewString creates an xmlrpc.Value from a string.
+func NewString(val string) *Value {
+	return &Value{FlatString: val}
+}
+
+// NewStrings creates an xmlrpc.Value from a string slice.
+func NewStrings(val []string) *Value {
+	es := make([]*Value, len(val))
+	for i := range val {
+		es[i] = &Value{FlatString: val[i]}
+	}
+	return &Value{Array: &Array{es}}
+}
+
+// NewSlice creates an xmlrpc.Value from a slice.
+func NewSlice(val []interface{}) (*Value, error) {
+	es := make([]*Value, len(val))
+	for i := range val {
+		cv, err := NewValue(val[i])
+		if err != nil {
+			return nil, err
+		}
+		es[i] = cv
+	}
+	return &Value{Array: &Array{es}}, nil
+}
+
+// NewMap creates an xmlrpc.Value from a map.
+func NewMap(val map[string]interface{}) (*Value, error) {
+	ms := make([]*Member, len(val))
+	i := 0
+	for n, v := range val {
+		cv, err := NewValue(v)
+		if err != nil {
+			return nil, err
+		}
+		ms[i] = &Member{Name: n, Value: cv}
+		i++
+	}
+	return &Value{Struct: &Struct{Members: ms}}, nil
+}
+
 // NewValue creates a value from a native data type. Supported types: bool, int,
 // float64, string, []string, []interface{} and map[string]interface{}.
 func NewValue(in interface{}) (*Value, error) {
-	out := &Value{}
 	switch val := in.(type) {
 	case bool:
-		if val {
-			out.Boolean = "1"
-		} else {
-			out.Boolean = "0"
-		}
+		return NewBool(val), nil
 	case int:
-		out.I4 = strconv.Itoa(val)
+		return NewInt(val), nil
 	case float64:
-		out.Double = strconv.FormatFloat(val, 'f', -1, 64)
+		return NewFloat64(val), nil
 	case string:
-		out.FlatString = val
+		return NewString(val), nil
 	case []string:
-		var es []*Value
-		for _, e := range val {
-			es = append(es, &Value{FlatString: e})
-		}
-		out.Array = &Array{es}
+		return NewStrings(val), nil
 	case []interface{}:
-		var es []*Value
-		for _, e := range val {
-			cv, err := NewValue(e)
-			if err != nil {
-				return nil, err
-			}
-			es = append(es, cv)
-		}
-		out.Array = &Array{es}
+		return NewSlice(val)
 	case map[string]interface{}:
-		var ms []*Member
-		for n, v := range val {
-			cv, err := NewValue(v)
-			if err != nil {
-				return nil, err
-			}
-			ms = append(ms, &Member{Name: n, Value: cv})
-		}
-		out.Struct = &Struct{Members: ms}
+		return NewMap(val)
 	default:
 		return nil, fmt.Errorf("Conversion of type %[1]T with value %[1]v is not supported", in)
 	}
-	return out, nil
 }
 
 func newFaultResponse(err error) *MethodResponse {

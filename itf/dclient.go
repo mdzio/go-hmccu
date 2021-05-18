@@ -3,24 +3,25 @@ package itf
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/mdzio/go-hmccu/itf/xmlrpc"
 
 	"github.com/mdzio/go-logging"
 )
 
-var clnLog = logging.Get("itf-client")
+var dclnLog = logging.Get("itf-d-client")
 
-// Client provides access to the HomeMatic XML-RPC API.
-type Client struct {
+// DeviceLayerClient provides access to the HomeMatic XML-RPC API of the device layer.
+type DeviceLayerClient struct {
 	Name string
 	xmlrpc.Caller
 }
 
 // GetDeviceDescription retrieves the device description for the specified
 // device.
-func (c *Client) GetDeviceDescription(deviceAddress string) (*DeviceDescription, error) {
-	clnLog.Debugf("Calling method getDeviceDescription(%s) on %s", deviceAddress, c.Name)
+func (c *DeviceLayerClient) GetDeviceDescription(deviceAddress string) (*DeviceDescription, error) {
+	dclnLog.Debugf("Calling method getDeviceDescription(%s) on %s", deviceAddress, c.Name)
 	// execute call
 	v, err := c.Call("getDeviceDescription", []*xmlrpc.Value{
 		{FlatString: deviceAddress},
@@ -40,8 +41,8 @@ func (c *Client) GetDeviceDescription(deviceAddress string) (*DeviceDescription,
 }
 
 // ListDevices retrieves the device descriptions from all devices.
-func (c *Client) ListDevices() ([]*DeviceDescription, error) {
-	clnLog.Debugf("Calling method listDevices on %s", c.Name)
+func (c *DeviceLayerClient) ListDevices() ([]*DeviceDescription, error) {
+	dclnLog.Debugf("Calling method listDevices on %s", c.Name)
 	// execute call
 	v, err := c.Call("listDevices", []*xmlrpc.Value{})
 	if err != nil {
@@ -63,9 +64,29 @@ func (c *Client) ListDevices() ([]*DeviceDescription, error) {
 	return r, nil
 }
 
+// DeleteDevice deletes a device.
+func (c *DeviceLayerClient) DeleteDevice(deviceAddress string, flags int) error {
+	dclnLog.Debugf("Calling method deleteDevice on %s", c.Name)
+	// execute call
+	v, err := c.Call("deleteDevice", []*xmlrpc.Value{
+		{FlatString: deviceAddress},
+		{Int: strconv.Itoa(flags)},
+	})
+	if err != nil {
+		return err
+	}
+
+	// assert empty response
+	err = c.assertEmptyResponse(v)
+	if err != nil {
+		return fmt.Errorf("Invalid response for method deleteDevice: %v", err)
+	}
+	return err
+}
+
 // GetParamsetDescription retrieves the paramset description from a device.
-func (c *Client) GetParamsetDescription(deviceAddress string, paramsetType string) (ParamsetDescription, error) {
-	clnLog.Debugf("Calling method getParamsetDescription(%s, %s) on %s", deviceAddress, paramsetType, c.Name)
+func (c *DeviceLayerClient) GetParamsetDescription(deviceAddress string, paramsetType string) (ParamsetDescription, error) {
+	dclnLog.Debugf("Calling method getParamsetDescription(%s, %s) on %s", deviceAddress, paramsetType, c.Name)
 	// execute call
 	v, err := c.Call("getParamsetDescription", []*xmlrpc.Value{
 		{FlatString: deviceAddress},
@@ -78,14 +99,7 @@ func (c *Client) GetParamsetDescription(deviceAddress string, paramsetType strin
 	// build result
 	e := xmlrpc.Q(v)
 	r := make(ParamsetDescription)
-	for n, v := range e.Map() {
-		p := &ParameterDescription{}
-		p.ReadFrom(v)
-		if e.Err() != nil {
-			break
-		}
-		r[n] = p
-	}
+	r.ReadFrom(e)
 	if e.Err() != nil {
 		return nil, fmt.Errorf("Invalid XML response for getParamsetDescription: %v", e.Err())
 	}
@@ -93,8 +107,8 @@ func (c *Client) GetParamsetDescription(deviceAddress string, paramsetType strin
 }
 
 // GetParamset retrieves the specified parameter set.
-func (c *Client) GetParamset(deviceAddress string, paramsetType string) (map[string]interface{}, error) {
-	clnLog.Debugf("Calling method getParamset(%s, %s) on %s", deviceAddress, paramsetType, c.Name)
+func (c *DeviceLayerClient) GetParamset(deviceAddress string, paramsetType string) (map[string]interface{}, error) {
+	dclnLog.Debugf("Calling method getParamset(%s, %s) on %s", deviceAddress, paramsetType, c.Name)
 	// execute call
 	v, err := c.Call("getParamset", []*xmlrpc.Value{
 		{FlatString: deviceAddress},
@@ -121,8 +135,8 @@ func (c *Client) GetParamset(deviceAddress string, paramsetType string) (map[str
 }
 
 // PutParamset writes the parameter set.
-func (c *Client) PutParamset(deviceAddress string, paramsetType string, paramset map[string]interface{}) error {
-	clnLog.Debugf("Calling method putParamset(%s, %s) on %s", deviceAddress, paramsetType, c.Name)
+func (c *DeviceLayerClient) PutParamset(deviceAddress string, paramsetType string, paramset map[string]interface{}) error {
+	dclnLog.Debugf("Calling method putParamset(%s, %s) on %s", deviceAddress, paramsetType, c.Name)
 	// convert value
 	ps, err := xmlrpc.NewValue(paramset)
 	if err != nil {
@@ -145,7 +159,7 @@ func (c *Client) PutParamset(deviceAddress string, paramsetType string, paramset
 	return err
 }
 
-func (c *Client) assertEmptyResponse(v *xmlrpc.Value) error {
+func (c *DeviceLayerClient) assertEmptyResponse(v *xmlrpc.Value) error {
 	eval := xmlrpc.Q(v)
 	s := eval.String()
 	if eval.Err() != nil || s != "" {
@@ -155,8 +169,8 @@ func (c *Client) assertEmptyResponse(v *xmlrpc.Value) error {
 }
 
 // SetValue sets a single value from the parameter set VALUES.
-func (c *Client) SetValue(deviceAddress string, valueName string, value interface{}) error {
-	clnLog.Debugf("Calling method setValue(%s, %s, %v) on %s", deviceAddress, valueName, value, c.Name)
+func (c *DeviceLayerClient) SetValue(deviceAddress string, valueName string, value interface{}) error {
+	dclnLog.Debugf("Calling method setValue(%s, %s, %v) on %s", deviceAddress, valueName, value, c.Name)
 	// convert value
 	v, err := xmlrpc.NewValue(value)
 	if err != nil {
@@ -180,8 +194,8 @@ func (c *Client) SetValue(deviceAddress string, valueName string, value interfac
 }
 
 // GetValue gets a single value from the parameter set VALUES.
-func (c *Client) GetValue(deviceAddress string, valueName string) (interface{}, error) {
-	clnLog.Debugf("Calling method getValue(%s, %s) on %s", deviceAddress, valueName, c.Name)
+func (c *DeviceLayerClient) GetValue(deviceAddress string, valueName string) (interface{}, error) {
+	dclnLog.Debugf("Calling method getValue(%s, %s) on %s", deviceAddress, valueName, c.Name)
 	// execute call
 	resp, err := c.Call("getValue", []*xmlrpc.Value{
 		{FlatString: deviceAddress},
@@ -202,8 +216,8 @@ func (c *Client) GetValue(deviceAddress string, valueName string) (interface{}, 
 // Init registers a new interface. The receiverAddress should have the format
 // http://hostname[:port][/Path]. If the path is not specified, the CCU will use
 // /RPC2.
-func (c *Client) Init(receiverAddress, id string) error {
-	clnLog.Debugf("Calling method init(%s, %s) on %s", receiverAddress, id, c.Name)
+func (c *DeviceLayerClient) Init(receiverAddress, id string) error {
+	dclnLog.Debugf("Calling method init(%s, %s) on %s", receiverAddress, id, c.Name)
 	// execute call
 	resp, err := c.Call("init", []*xmlrpc.Value{
 		{FlatString: receiverAddress},
@@ -221,8 +235,8 @@ func (c *Client) Init(receiverAddress, id string) error {
 }
 
 // Deinit deregisters an interface. The receiverAddress should match with Init.
-func (c *Client) Deinit(receiverAddress string) error {
-	clnLog.Debugf("Calling method init(%s) on %s", receiverAddress, c.Name)
+func (c *DeviceLayerClient) Deinit(receiverAddress string) error {
+	dclnLog.Debugf("Calling method init(%s) on %s", receiverAddress, c.Name)
 	// execute call
 	resp, err := c.Call("init", []*xmlrpc.Value{
 		{FlatString: receiverAddress},
@@ -240,8 +254,8 @@ func (c *Client) Deinit(receiverAddress string) error {
 }
 
 // Ping triggers a pong event. Returns true on success.
-func (c *Client) Ping(callerID string) (bool, error) {
-	clnLog.Debugf("Calling method ping(%s) on %s", callerID, c.Name)
+func (c *DeviceLayerClient) Ping(callerID string) (bool, error) {
+	dclnLog.Debugf("Calling method ping(%s) on %s", callerID, c.Name)
 	// execute call
 	resp, err := c.Call("ping", []*xmlrpc.Value{
 		{FlatString: callerID},
@@ -261,29 +275,4 @@ func (c *Client) Ping(callerID string) (bool, error) {
 		}
 	}
 	return res, nil
-}
-
-// Event sends an event.
-func (c *Client) Event(interfaceID, address, valueKey string, value interface{}) error {
-	clnLog.Debugf("Calling method event(%s, %s, %s, %v) on %s", interfaceID, address, valueKey, value, c.Name)
-	// execute call
-	v, err := xmlrpc.NewValue(value)
-	if err != nil {
-		return err
-	}
-	resp, err := c.Call("event", []*xmlrpc.Value{
-		{FlatString: interfaceID},
-		{FlatString: address},
-		{FlatString: valueKey},
-		v,
-	})
-	if err != nil {
-		return err
-	}
-	// assert empty response
-	err = c.assertEmptyResponse(resp)
-	if err != nil {
-		return fmt.Errorf("Invalid response for method event: %v", err)
-	}
-	return nil
 }

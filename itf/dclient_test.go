@@ -25,9 +25,9 @@ const (
 	hmespmsw1Device = "HMESPMSW1_DEVICE"
 )
 
-func newXMLTestClient(t *testing.T) *Client {
+func newXMLTestClient(t *testing.T) *DeviceLayerClient {
 	addr := testutil.Config(t, ccuAddress) + ":2001"
-	return &Client{
+	return &DeviceLayerClient{
 		Name:   addr,
 		Caller: &xmlrpc.Client{Addr: addr},
 	}
@@ -136,6 +136,9 @@ func TestClient_GetSetParamsetMaster(t *testing.T) {
 		"MASTER",
 		map[string]interface{}{"TRANSMIT_TRY_MAX": tryMax},
 	)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestClient_GetSetValue(t *testing.T) {
