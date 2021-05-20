@@ -112,20 +112,6 @@ string id; foreach(id, dom.GetObject(ID_SYSTEM_VARIABLES).EnumIDs()) {
 		sv.ValueName0() # "\t" # sv.ValueName1() # "\t" # sv.ValueList()); }
 }`
 
-const readValueScript = `! Reading value
-var sv=dom.GetObject({{ . }});
-if (sv) {
-	if (sv.IsTypeOf(OT_DP) || sv.IsTypeOf(OT_VARDP) || sv.IsTypeOf(OT_ALARMDP)) {
-		WriteLine("OK"); 
-		WriteLine(sv.Timestamp().ToInteger());
-		WriteLine(sv.Value()); 
-	} else {
-		WriteLine("Object has wrong type");
-	}
-} else {
-	WriteLine("Not found");
-}`
-
 // readValuesScript expects as dot parameter a tab separated string of object
 // IDs. Special characters in string data points are returned percent encoded.
 const readValuesScript = `! Reading multiple values
@@ -167,7 +153,6 @@ var (
 	execProgramTempl  = template.Must(template.New("execProgram").Parse(execProgramScript))
 	readExecTimeTempl = template.Must(template.New("readExecTime").Parse(readExecTimeScript))
 	enumSysVarsTempl  = template.Must(template.New("enumSysVars").Parse(enumSysVarsScript))
-	readValueTempl    = template.Must(template.New("readValue").Parse(readValueScript))
 	readValuesTempl   = template.Must(template.New("readValues").Parse(readValuesScript))
 	writeValueTempl   = template.Must(template.New("writeValue").Parse(writeValueScript))
 )
