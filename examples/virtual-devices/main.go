@@ -101,8 +101,6 @@ func run() error {
 		}
 		bp := vdevices.NewBoolParameter("BOOL_PARAM")
 		dev.AddMasterParam(&bp.Parameter)
-		vdevs.AddDevice(dev)
-		log.Infof("Created device: %s", dev.Description().Address)
 
 		// maintenance channel
 		mch := vdevices.NewMaintenanceChannel(dev)
@@ -139,6 +137,9 @@ func run() error {
 			}
 			log.Infof("Created key channel: %s", kch.Description().Address)
 		}
+
+		vdevs.AddDevice(dev)
+		log.Infof("Created device: %s", dev.Description().Address)
 	}
 
 	// HM RPC dispatcher
