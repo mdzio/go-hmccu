@@ -21,7 +21,7 @@ var (
 
 	logLevel = logging.InfoLevel
 	ccu      = flag.String("ccu", "127.0.0.1", "`address` of the CCU")
-	port     = flag.Int("port", 2001, "port `number` of the CCU interface process: e.g. 2000 (BidCos-Wired), 2001 (BidCos-RF), 2010 (HmIP-RF), 8701 (CUxD)")
+	port     = flag.Int("port", 2001, "port `number` of the CCU interface process: e.g. 2000 (BidCos-Wired), 2001 (BidCos-RF), 2010 (HmIP-RF), 8701 (CUxD), 2121 (CCU-Jack)")
 	device   = flag.String("device", "BidCoS-RF:1", "`address` (serial no.) of a CCU device/channel")
 	list     = flag.Bool("list", false, "list all devices")
 )
@@ -47,6 +47,9 @@ func run() error {
 
 	// create interface client
 	addr := *ccu + ":" + strconv.Itoa(*port)
+	if *port == 2121 {
+		addr += "/RPC3"
+	}
 	var caller xmlrpc.Caller
 	if *port != 8701 {
 		caller = &xmlrpc.Client{Addr: addr}
