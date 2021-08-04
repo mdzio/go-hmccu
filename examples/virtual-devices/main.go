@@ -88,7 +88,7 @@ func run() error {
 	vdevs := vdevices.NewContainer()
 
 	// virtual devices handler
-	vdevHandler := vdevices.NewHandler(*ccuAddress, vdevs)
+	vdevHandler := vdevices.NewHandler(*ccuAddress, vdevs, func(string) {})
 	defer vdevHandler.Close()
 	vdevs.Synchronizer = vdevHandler
 

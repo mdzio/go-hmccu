@@ -18,12 +18,16 @@ func TestModel(t *testing.T) {
 
 	var onDisposeCalled int32
 	var onSetStateCalled int32
+	var onDeletionCalled atomic.Value
 
 	// virtual devices container
 	vdevs := NewContainer()
 
 	// virtual devices handler
-	vdevHandler := NewHandler("", vdevs)
+	vdevHandler := NewHandler("", vdevs, func(address string) {
+		log.Debugf("OnDelete called: %s", address)
+		onDeletionCalled.Store(address)
+	})
 	defer vdevHandler.Close()
 	vdevs.Synchronizer = vdevHandler
 
@@ -106,7 +110,7 @@ func TestModel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	} else {
-		if !reflect.DeepEqual(ps, map[string]interface{}{"STATE": false}) {
+		if !reflect.DeepEqual(ps, map[string]interface{}{"INSTALL_TEST": false, "STATE": false}) {
 			t.Fatal(ps)
 		}
 	}
@@ -151,6 +155,9 @@ func TestModel(t *testing.T) {
 	}
 	if atomic.LoadInt32(&onDisposeCalled) != 1 {
 		t.Fatal("onDispose callback invalid")
+	}
+	if onDeletionCalled.Load().(string) != "JCK000" {
+		t.Fatal("onDeletion callback invalid")
 	}
 
 	dds, err = cln.ListDevices()

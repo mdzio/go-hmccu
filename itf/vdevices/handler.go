@@ -23,20 +23,23 @@ type Synchronizer interface {
 
 // Handler handles requests from logic layers.
 type Handler struct {
-	ccuAddr string
-	devices *Container
+	ccuAddr          string
+	devices          *Container
+	deletionNotifier func(address string)
 
 	servants   map[string]*servant // key: receiverAddress
 	mtx        sync.Mutex          // for servants map
 	daemonPool conc.DaemonPool     // for background tasks
 }
 
-// NewHandler creates a Handler.
-func NewHandler(ccuAddr string, devices *Container) *Handler {
+// NewHandler creates a Handler. deletionNotifier is called, when the CCU
+// initiates a device deletion.
+func NewHandler(ccuAddr string, devices *Container, deletionNotifier func(address string)) *Handler {
 	return &Handler{
-		ccuAddr:  ccuAddr,
-		devices:  devices,
-		servants: make(map[string]*servant),
+		ccuAddr:          ccuAddr,
+		devices:          devices,
+		deletionNotifier: deletionNotifier,
+		servants:         make(map[string]*servant),
 	}
 }
 
@@ -142,7 +145,8 @@ func (h *Handler) ListDevices() ([]*itf.DeviceDescription, error) {
 	return descr, nil
 }
 
-// DeleteDevice implements DeviceLayer.
+// DeleteDevice implements DeviceLayer. Before removing the device from the
+// container, deletionNotifier is called.
 func (h *Handler) DeleteDevice(address string, flags int) error {
 	deviceAddr, channelAddr := itf.SplitAddress(address)
 	if channelAddr != "" {
@@ -150,6 +154,7 @@ func (h *Handler) DeleteDevice(address string, flags int) error {
 		log.Debugf("Deletion of channel ignored: %s", address)
 		return nil
 	}
+	h.deletionNotifier(address)
 	return h.devices.RemoveDevice(deviceAddr)
 }
 
