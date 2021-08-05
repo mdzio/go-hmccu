@@ -279,3 +279,15 @@ func (h *Handler) getParamset(address string, paramsetKey string) (GenericParams
 		return nil, fmt.Errorf("Invalid paramset key for %s: %s", address, paramsetKey)
 	}
 }
+
+// TeeEventPublisher distributes a PublishEvent call to two receivers.
+type TeeEventPublisher struct {
+	First  EventPublisher
+	Second EventPublisher
+}
+
+// PublishEvent implements vdevices.EventPublisher.
+func (t *TeeEventPublisher) PublishEvent(address, valueKey string, value interface{}) {
+	t.First.PublishEvent(address, valueKey, value)
+	t.Second.PublishEvent(address, valueKey, value)
+}
