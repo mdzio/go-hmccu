@@ -166,3 +166,88 @@ func (c *KeyChannel) PressLong() {
 	defer c.locker.Unlock()
 	c.pressShort.RawSetValue(true)
 }
+
+// AnalogInputChannel implements a HM analog input channel (e.g.
+// HmIP-MIO16-PCB:1).
+type AnalogInputChannel struct {
+	Channel
+
+	// These callbacks are executed when an external system wants to change the
+	// values. Only if the function returns true, the value is actually set.
+	OnSetVoltage       func(value float64) (ok bool)
+	OnSetVoltageStatus func(value int) (ok bool)
+
+	voltage       *FloatParameter
+	voltageStatus *IntParameter
+}
+
+// NewAnalogInputChannel creates a new HM analog input channel and adds it to the device.
+// The field OnSetVoltage must be set to be able to react to external value
+// changes.
+func NewAnalogInputChannel(device *Device) *AnalogInputChannel {
+	c := new(AnalogInputChannel)
+	c.Channel.Init("ANALOG_INPUT_TRANSMITTER")
+	// adding channel to device also initializes some fields
+	device.bindChannel(&c.Channel)
+	addInstallTest(&c.Channel)
+
+	// add VOLTAGE parameter
+	c.voltage = NewFloatParameter("VOLTAGE")
+	c.voltage.description.Control = "ANALOG_INPUT.VOLTAGE"
+	c.voltage.OnSetValue = func(value float64) bool {
+		if c.OnSetVoltage != nil {
+			return c.OnSetVoltage(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(&c.voltage.Parameter)
+
+	// add VOLTAGE_STATUS parameter
+	c.voltageStatus = NewIntParameter("VOLTAGE_STATUS")
+	c.voltageStatus.description.Type = itf.ParameterTypeEnum
+	// following values are reported by a HmIP-MIO16-PCB:1. normaly numbers are
+	// expected for Default, Min and Max.
+	c.voltageStatus.description.Default = "NORMAL"
+	c.voltageStatus.description.Max = "OVERFLOW"
+	c.voltageStatus.description.Min = "NORMAL"
+	c.voltageStatus.description.Control = "ANALOG_INPUT.VOLTAGE_STATUS"
+	c.voltageStatus.description.ValueList = []string{"NORMAL", "UNKNOWN", "OVERFLOW"}
+	c.voltageStatus.OnSetValue = func(value int) bool {
+		if c.OnSetVoltage != nil {
+			return c.OnSetVoltageStatus(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(&c.voltageStatus.Parameter)
+	return c
+}
+
+// SetVoltage sets the voltage of the analog input.
+func (c *AnalogInputChannel) SetVoltage(value float64) {
+	c.locker.Lock()
+	defer c.locker.Unlock()
+	c.voltage.RawSetValue(value)
+}
+
+// Voltage returns the voltage of the analog input.
+func (c *AnalogInputChannel) Voltage() float64 {
+	c.locker.Lock()
+	defer c.locker.Unlock()
+	return c.voltage.RawValue()
+}
+
+// SetVoltageStatus sets the voltage status of the analog input.
+func (c *AnalogInputChannel) SetVoltageStatus(value int) {
+	c.locker.Lock()
+	defer c.locker.Unlock()
+	c.voltageStatus.RawSetValue(value)
+}
+
+// VoltageStatus returns the voltage status of the analog input.
+func (c *AnalogInputChannel) VoltageStatus() int {
+	c.locker.Lock()
+	defer c.locker.Unlock()
+	return c.voltageStatus.RawValue()
+}
