@@ -58,6 +58,16 @@ func NewContainer() *Container {
 	}
 }
 
+// Dispose releases all devices and calls Dispose on them.
+func (c *Container) Dispose() {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	for _, d := range c.devices {
+		d.Dispose()
+	}
+	c.devices = nil
+}
+
 // AddDevice adds the specified device to the container. The structure of a
 // device, e.g. the channels and paramsets, must not change after adding the
 // device.
