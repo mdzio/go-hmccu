@@ -255,3 +255,80 @@ func (p *FloatParameter) RawSetValue(value float64) {
 func (p *FloatParameter) RawValue() float64 {
 	return p.value
 }
+
+// StringParameter represents a HM STRING value.
+type StringParameter struct {
+	Parameter
+
+	// This callback is executed when an external system wants to change the
+	// value. Only if this function returns true, the value is actually set.
+	OnSetValue func(value string) (ok bool)
+
+	value string
+}
+
+// NewStringParameter creates a StringParameter (Type: STRING). The locker of
+// the channel is used while modifying the value. Following fields in the
+// parameters description are initialized to standard values: Type, Operation,
+// Flags, Default (""), Min (""), Max (""), ID.
+func NewStringParameter(id string) *StringParameter {
+	p := &StringParameter{
+		Parameter: Parameter{
+			description: &itf.ParameterDescription{
+				Type:       itf.ParameterTypeString,
+				Operations: itf.ParameterOperationRead | itf.ParameterOperationWrite | itf.ParameterOperationEvent,
+				Flags:      itf.ParameterFlagVisible,
+				Default:    "",
+				Max:        "",
+				Min:        "",
+				ID:         id,
+			},
+		},
+	}
+	p.GenericParameter = p
+	return p
+}
+
+// SetValue implements interface GenericParameter. This accessor is for external
+// systems.
+func (p *StringParameter) SetValue(value interface{}) error {
+	if p.description.Operations&itf.ParameterOperationWrite == 0 {
+		return fmt.Errorf("Parameter not writeable: %s.%s", p.parentDescr.Address, p.description.ID)
+	}
+	svalue, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
+	}
+	p.locker.Lock()
+	defer p.locker.Unlock()
+	if p.OnSetValue == nil {
+		ok = true
+	} else {
+		ok = p.OnSetValue(svalue)
+	}
+	if ok {
+		p.RawSetValue(svalue)
+	}
+	return nil
+}
+
+// Value implements interface GenericParameter.  This accessor is for external
+// systems.
+func (p *StringParameter) Value() interface{} {
+	p.locker.Lock()
+	defer p.locker.Unlock()
+	return p.value
+}
+
+// RawSetValue gets called by internal logic. Channel lock is not acquired.
+func (p *StringParameter) RawSetValue(value string) {
+	p.value = value
+	if pub := p.publisher; pub != nil {
+		pub.PublishEvent(p.parentDescr.Address, p.description.ID, value)
+	}
+}
+
+// RawValue gets called by internal logic. Channel lock is not acquired.
+func (p *StringParameter) RawValue() string {
+	return p.value
+}
