@@ -206,13 +206,24 @@ func NewAnalogInputChannel(device *Device) *AnalogInputChannel {
 	// add VOLTAGE_STATUS parameter
 	c.voltageStatus = NewIntParameter("VOLTAGE_STATUS")
 	c.voltageStatus.description.Type = itf.ParameterTypeEnum
-	// following values are reported by a HmIP-MIO16-PCB:1. normaly numbers are
-	// expected for Default, Min and Max.
-	c.voltageStatus.description.Default = "NORMAL"
-	c.voltageStatus.description.Max = "OVERFLOW"
-	c.voltageStatus.description.Min = "NORMAL"
 	c.voltageStatus.description.Control = "ANALOG_INPUT.VOLTAGE_STATUS"
-	c.voltageStatus.description.ValueList = []string{"NORMAL", "UNKNOWN", "OVERFLOW"}
+
+	// Following values are reported by an analog input of a HmIP-MIO16-PCB:1.
+	// c.voltageStatus.description.Default = "NORMAL"
+	// c.voltageStatus.description.Max = "OVERFLOW"
+	// c.voltageStatus.description.Min = "NORMAL"
+	// c.voltageStatus.description.ValueList = []string{"NORMAL", "UNKNOWN", "OVERFLOW"}
+	// Even when using these values, the VOLTAGE_STATUS is not displayed in the
+	// Web-UI of the CCU, e.g. as a program trigger, as it is for a real device.
+	// Maybe someone can explain. With the following settings at least all
+	// possible values of the ENUM are displayed, although the value 1 is
+	// normally hidden.
+
+	c.voltageStatus.description.Default = 0
+	c.voltageStatus.description.Max = 3
+	c.voltageStatus.description.Min = 0
+	c.voltageStatus.description.ValueList = []string{"NORMAL", "UNKNOWN", "OVERFLOW", "UNDERFLOW"}
+
 	c.voltageStatus.OnSetValue = func(value int) bool {
 		if c.OnSetVoltage != nil {
 			return c.OnSetVoltageStatus(value)
