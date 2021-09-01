@@ -33,12 +33,18 @@ type GenericParamset interface {
 	Parameter(id string) (GenericParameter, error)
 }
 
+type ValueAccessor interface {
+	SetValue(value interface{}) error
+	// no OnSet callback is executed and write access is not checked
+	SetValueUnchecked(value interface{}) error
+	Value() interface{}
+}
+
 // GenericParameter that can be used by Handler.
 type GenericParameter interface {
 	Description() *itf.ParameterDescription
 
-	SetValue(value interface{}) error
-	Value() interface{}
+	ValueAccessor
 }
 
 // A Container manages virtual devices and can be used by Handler. Devices can

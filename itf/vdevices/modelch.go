@@ -29,7 +29,7 @@ func NewMaintenanceChannel(device *Device) *MaintenanceChannel {
 	c.Channel.Init("MAINTENANCE")
 	c.description.Flags = itf.DeviceFlagVisible | itf.DeviceFlagInternal
 	// adding channel to device also initializes some fields
-	device.bindChannel(&c.Channel)
+	device.AddChannel(&c.Channel)
 	addInstallTest(&c.Channel)
 
 	// add UNREACH parameter
@@ -48,11 +48,9 @@ func NewMaintenanceChannel(device *Device) *MaintenanceChannel {
 
 // SetUnreach sets the connection state of the device.
 func (c *MaintenanceChannel) SetUnreach(value bool) {
-	c.locker.Lock()
-	defer c.locker.Unlock()
-	c.unreach.RawSetValue(value)
+	c.unreach.SetValueUnchecked(value)
 	if value {
-		c.stickyUnreach.RawSetValue(true)
+		c.stickyUnreach.SetValueUnchecked(true)
 	}
 }
 
@@ -74,7 +72,7 @@ func NewSwitchChannel(device *Device) *SwitchChannel {
 	c := new(SwitchChannel)
 	c.Channel.Init("SWITCH")
 	// adding channel to device also initializes some fields
-	device.bindChannel(&c.Channel)
+	device.AddChannel(&c.Channel)
 	addInstallTest(&c.Channel)
 
 	// add STATE parameter
@@ -93,16 +91,12 @@ func NewSwitchChannel(device *Device) *SwitchChannel {
 
 // SetState sets the state of the switch.
 func (c *SwitchChannel) SetState(value bool) {
-	c.locker.Lock()
-	defer c.locker.Unlock()
-	c.state.RawSetValue(value)
+	c.state.SetValueUnchecked(value)
 }
 
 // State returns the state of the switch.
 func (c *SwitchChannel) State() bool {
-	c.locker.Lock()
-	defer c.locker.Unlock()
-	return c.state.RawValue()
+	return c.state.Value().(bool)
 }
 
 // KeyChannel implements a standard HM key channel.
@@ -120,7 +114,7 @@ func NewKeyChannel(device *Device) *KeyChannel {
 	c := new(KeyChannel)
 	c.Channel.Init("KEY_TRANSCEIVER")
 	// adding channel to device also initializes some fields
-	device.bindChannel(&c.Channel)
+	device.AddChannel(&c.Channel)
 	addInstallTest(&c.Channel)
 
 	// add PRESS_SHORT parameter
@@ -155,16 +149,12 @@ func NewKeyChannel(device *Device) *KeyChannel {
 
 // PressShort sends a press short event.
 func (c *KeyChannel) PressShort() {
-	c.locker.Lock()
-	defer c.locker.Unlock()
-	c.pressShort.RawSetValue(true)
+	c.pressShort.SetValueUnchecked(true)
 }
 
 // PressShort sends a press long event.
 func (c *KeyChannel) PressLong() {
-	c.locker.Lock()
-	defer c.locker.Unlock()
-	c.pressShort.RawSetValue(true)
+	c.pressShort.SetValueUnchecked(true)
 }
 
 // AnalogInputChannel implements a HM analog input channel (e.g.
@@ -188,7 +178,7 @@ func NewAnalogInputChannel(device *Device) *AnalogInputChannel {
 	c := new(AnalogInputChannel)
 	c.Channel.Init("ANALOG_INPUT_TRANSMITTER")
 	// adding channel to device also initializes some fields
-	device.bindChannel(&c.Channel)
+	device.AddChannel(&c.Channel)
 	addInstallTest(&c.Channel)
 
 	// add VOLTAGE parameter
@@ -237,28 +227,20 @@ func NewAnalogInputChannel(device *Device) *AnalogInputChannel {
 
 // SetVoltage sets the voltage of the analog input.
 func (c *AnalogInputChannel) SetVoltage(value float64) {
-	c.locker.Lock()
-	defer c.locker.Unlock()
-	c.voltage.RawSetValue(value)
+	c.voltage.SetValueUnchecked(value)
 }
 
 // Voltage returns the voltage of the analog input.
 func (c *AnalogInputChannel) Voltage() float64 {
-	c.locker.Lock()
-	defer c.locker.Unlock()
-	return c.voltage.RawValue()
+	return c.voltage.Value().(float64)
 }
 
 // SetVoltageStatus sets the voltage status of the analog input.
 func (c *AnalogInputChannel) SetVoltageStatus(value int) {
-	c.locker.Lock()
-	defer c.locker.Unlock()
-	c.voltageStatus.RawSetValue(value)
+	c.voltageStatus.SetValueUnchecked(value)
 }
 
 // VoltageStatus returns the voltage status of the analog input.
 func (c *AnalogInputChannel) VoltageStatus() int {
-	c.locker.Lock()
-	defer c.locker.Unlock()
-	return c.voltageStatus.RawValue()
+	return c.voltageStatus.Value().(int)
 }

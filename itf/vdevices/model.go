@@ -65,10 +65,10 @@ func (d *Device) MasterParamset() GenericParamset {
 	return &d.masterParamset
 }
 
-// bindChannel binds a channel to the device. Following fields in the channels
+// AddChannel binds a channel to the device. Following fields in the channels
 // description are initialized: Parent, ParentType, Address, Index. Publisher of
 // the channel is set to the publisher of the device.
-func (d *Device) bindChannel(channel *Channel) {
+func (d *Device) AddChannel(channel *Channel) {
 	// complement channel description
 	idx := len(d.channels)
 	descr := channel.Description()

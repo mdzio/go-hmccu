@@ -7,10 +7,9 @@ import (
 	"github.com/mdzio/go-hmccu/itf"
 )
 
-// Parameter implements GenericParameter.
+// Parameter implements ValueAccessor and therefore GenericParameter.
 type Parameter struct {
-	// Only SetValue and Value methods are missing in Parameter.
-	GenericParameter
+	ValueAccessor
 
 	description *itf.ParameterDescription
 	parentDescr *itf.DeviceDescription
@@ -21,6 +20,14 @@ type Parameter struct {
 // Description implements interface GenericParameter.
 func (p *Parameter) Description() *itf.ParameterDescription {
 	return p.description
+}
+
+// Description implements interface GenericParameter.
+func (p *Parameter) publishValue(value interface{}) {
+	// updates of master params are not published
+	if pub := p.publisher; pub != nil {
+		pub.PublishEvent(p.parentDescr.Address, p.description.ID, value)
+	}
 }
 
 // BoolParameter represents a HM BOOL or ACTION value.
@@ -53,7 +60,7 @@ func NewBoolParameter(id string) *BoolParameter {
 			},
 		},
 	}
-	p.GenericParameter = p
+	p.ValueAccessor = p
 	return p
 }
 
@@ -67,16 +74,30 @@ func (p *BoolParameter) SetValue(value interface{}) error {
 	if !ok {
 		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
 	}
-	p.locker.Lock()
-	defer p.locker.Unlock()
 	if p.OnSetValue == nil {
 		ok = true
 	} else {
 		ok = p.OnSetValue(bvalue)
 	}
 	if ok {
-		p.RawSetValue(bvalue)
+		p.publishValue(bvalue)
+		p.locker.Lock()
+		defer p.locker.Unlock()
+		p.value = bvalue
 	}
+	return nil
+}
+
+// SetValueUnchecked implements ValueAccessor.
+func (p *BoolParameter) SetValueUnchecked(value interface{}) error {
+	bvalue, ok := value.(bool)
+	if !ok {
+		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
+	}
+	p.publishValue(bvalue)
+	p.locker.Lock()
+	defer p.locker.Unlock()
+	p.value = bvalue
 	return nil
 }
 
@@ -85,19 +106,6 @@ func (p *BoolParameter) SetValue(value interface{}) error {
 func (p *BoolParameter) Value() interface{} {
 	p.locker.Lock()
 	defer p.locker.Unlock()
-	return p.value
-}
-
-// RawSetValue gets called by internal logic. Channel lock is not acquired.
-func (p *BoolParameter) RawSetValue(value bool) {
-	p.value = value
-	if pub := p.publisher; pub != nil {
-		pub.PublishEvent(p.parentDescr.Address, p.description.ID, value)
-	}
-}
-
-// RawValue gets called by internal logic. Channel lock is not acquired.
-func (p *BoolParameter) RawValue() bool {
 	return p.value
 }
 
@@ -131,7 +139,7 @@ func NewIntParameter(id string) *IntParameter {
 			},
 		},
 	}
-	p.GenericParameter = p
+	p.ValueAccessor = p
 	return p
 }
 
@@ -145,16 +153,30 @@ func (p *IntParameter) SetValue(value interface{}) error {
 	if !ok {
 		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
 	}
-	p.locker.Lock()
-	defer p.locker.Unlock()
 	if p.OnSetValue == nil {
 		ok = true
 	} else {
 		ok = p.OnSetValue(ivalue)
 	}
 	if ok {
-		p.RawSetValue(ivalue)
+		p.publishValue(ivalue)
+		p.locker.Lock()
+		defer p.locker.Unlock()
+		p.value = ivalue
 	}
+	return nil
+}
+
+// SetValueUnchecked implements ValueAccessor.
+func (p *IntParameter) SetValueUnchecked(value interface{}) error {
+	ivalue, ok := value.(int)
+	if !ok {
+		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
+	}
+	p.publishValue(ivalue)
+	p.locker.Lock()
+	defer p.locker.Unlock()
+	p.value = ivalue
 	return nil
 }
 
@@ -163,19 +185,6 @@ func (p *IntParameter) SetValue(value interface{}) error {
 func (p *IntParameter) Value() interface{} {
 	p.locker.Lock()
 	defer p.locker.Unlock()
-	return p.value
-}
-
-// RawSetValue gets called by internal logic. Channel lock is not acquired.
-func (p *IntParameter) RawSetValue(value int) {
-	p.value = value
-	if pub := p.publisher; pub != nil {
-		pub.PublishEvent(p.parentDescr.Address, p.description.ID, value)
-	}
-}
-
-// RawValue gets called by internal logic. Channel lock is not acquired.
-func (p *IntParameter) RawValue() int {
 	return p.value
 }
 
@@ -208,7 +217,7 @@ func NewFloatParameter(id string) *FloatParameter {
 			},
 		},
 	}
-	p.GenericParameter = p
+	p.ValueAccessor = p
 	return p
 }
 
@@ -222,16 +231,30 @@ func (p *FloatParameter) SetValue(value interface{}) error {
 	if !ok {
 		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
 	}
-	p.locker.Lock()
-	defer p.locker.Unlock()
 	if p.OnSetValue == nil {
 		ok = true
 	} else {
 		ok = p.OnSetValue(fvalue)
 	}
 	if ok {
-		p.RawSetValue(fvalue)
+		p.publishValue(fvalue)
+		p.locker.Lock()
+		defer p.locker.Unlock()
+		p.value = fvalue
 	}
+	return nil
+}
+
+// SetValueUnchecked implements ValueAccessor.
+func (p *FloatParameter) SetValueUnchecked(value interface{}) error {
+	fvalue, ok := value.(float64)
+	if !ok {
+		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
+	}
+	p.publishValue(fvalue)
+	p.locker.Lock()
+	defer p.locker.Unlock()
+	p.value = fvalue
 	return nil
 }
 
@@ -240,19 +263,6 @@ func (p *FloatParameter) SetValue(value interface{}) error {
 func (p *FloatParameter) Value() interface{} {
 	p.locker.Lock()
 	defer p.locker.Unlock()
-	return p.value
-}
-
-// RawSetValue gets called by internal logic. Channel lock is not acquired.
-func (p *FloatParameter) RawSetValue(value float64) {
-	p.value = value
-	if pub := p.publisher; pub != nil {
-		pub.PublishEvent(p.parentDescr.Address, p.description.ID, value)
-	}
-}
-
-// RawValue gets called by internal logic. Channel lock is not acquired.
-func (p *FloatParameter) RawValue() float64 {
 	return p.value
 }
 
@@ -285,7 +295,7 @@ func NewStringParameter(id string) *StringParameter {
 			},
 		},
 	}
-	p.GenericParameter = p
+	p.ValueAccessor = p
 	return p
 }
 
@@ -299,16 +309,30 @@ func (p *StringParameter) SetValue(value interface{}) error {
 	if !ok {
 		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
 	}
-	p.locker.Lock()
-	defer p.locker.Unlock()
 	if p.OnSetValue == nil {
 		ok = true
 	} else {
 		ok = p.OnSetValue(svalue)
 	}
 	if ok {
-		p.RawSetValue(svalue)
+		p.publishValue(svalue)
+		p.locker.Lock()
+		defer p.locker.Unlock()
+		p.value = svalue
 	}
+	return nil
+}
+
+// SetValueUnchecked implements ValueAccessor.
+func (p *StringParameter) SetValueUnchecked(value interface{}) error {
+	svalue, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
+	}
+	p.publishValue(svalue)
+	p.locker.Lock()
+	defer p.locker.Unlock()
+	p.value = svalue
 	return nil
 }
 
@@ -317,18 +341,5 @@ func (p *StringParameter) SetValue(value interface{}) error {
 func (p *StringParameter) Value() interface{} {
 	p.locker.Lock()
 	defer p.locker.Unlock()
-	return p.value
-}
-
-// RawSetValue gets called by internal logic. Channel lock is not acquired.
-func (p *StringParameter) RawSetValue(value string) {
-	p.value = value
-	if pub := p.publisher; pub != nil {
-		pub.PublishEvent(p.parentDescr.Address, p.description.ID, value)
-	}
-}
-
-// RawValue gets called by internal logic. Channel lock is not acquired.
-func (p *StringParameter) RawValue() string {
 	return p.value
 }

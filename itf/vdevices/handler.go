@@ -2,6 +2,8 @@ package vdevices
 
 import (
 	"fmt"
+	"os"
+	"strings"
 	"sync"
 
 	"github.com/mdzio/go-hmccu/itf"
@@ -10,6 +12,11 @@ import (
 )
 
 var log = logging.Get("v-devices")
+
+const (
+	// template for a new interface entry
+	itfTmpl = "\t<ipc>\n\t \t<name>%s</name>\n\t \t<url>%s</url>\n\t \t<info>%s</info>\n\t</ipc>\n"
+)
 
 // EventPublisher publishes value change events.
 type EventPublisher interface {
@@ -290,4 +297,31 @@ type TeeEventPublisher struct {
 func (t *TeeEventPublisher) PublishEvent(address, valueKey string, value interface{}) {
 	t.First.PublishEvent(address, valueKey, value)
 	t.Second.PublishEvent(address, valueKey, value)
+}
+
+func AddToInterfaceList(inFilePath, outFilePath, name, url, info string) error {
+	// read file
+	bs, err := os.ReadFile(inFilePath)
+	if err != nil {
+		return err
+	}
+	in := string(bs)
+
+	// generate entry
+	e := fmt.Sprintf(itfTmpl, name, url, info)
+	log.Tracef("Inserting into %s: %s", inFilePath, e)
+
+	// insert entry
+	p := strings.Index(in, "</interfaces>")
+	if p == -1 {
+		return fmt.Errorf("Invalid file format: %s", inFilePath)
+	}
+	out := in[:p] + e + in[p:]
+
+	// write file
+	err = os.WriteFile(outFilePath, []byte(out), 0644)
+	if err != nil {
+		return err
+	}
+	return nil
 }
