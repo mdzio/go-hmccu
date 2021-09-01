@@ -9,9 +9,6 @@ import (
 	"net/http"
 
 	"github.com/mdzio/go-logging"
-
-	"golang.org/x/net/html/charset"
-	"golang.org/x/text/encoding/charmap"
 )
 
 // max. size of a valid response, if not specified: 10 MB
@@ -44,21 +41,17 @@ func (c *Client) Call(method string, params Values) (*Value, error) {
 		Params:     &Params{ps},
 	}
 
-	// use ISO8859-1 character encoding for request
+	// write xml header, use standard UTF-8 character encoding for response
 	var reqBuf bytes.Buffer
-	reqWriter := charmap.ISO8859_1.NewEncoder().Writer(&reqBuf)
-
-	// write xml header
-	reqWriter.Write([]byte("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n"))
+	reqBuf.Write([]byte("<?xml version=\"1.0\"?>\n"))
 
 	// encode request to xml
-	enc := xml.NewEncoder(reqWriter)
+	enc := xml.NewEncoder(&reqBuf)
 	err := enc.Encode(methodCall)
 	if err != nil {
 		return nil, fmt.Errorf("Encoding of request for %s failed: %v", c.Addr, err)
 	}
 	if clnLog.TraceEnabled() {
-		// attention: log message is ISO8859-1 encoded!
 		clnLog.Tracef("Request XML: %s", reqBuf.String())
 	}
 
@@ -85,7 +78,6 @@ func (c *Client) Call(method string, params Values) (*Value, error) {
 		return nil, fmt.Errorf("Reading of response failed from %s: %v", c.Addr, err)
 	}
 	if clnLog.TraceEnabled() {
-		// attention: log message is probably ISO8859-1 encoded!
 		clnLog.Tracef("Response XML: %s", string(respBuf))
 	}
 
@@ -93,7 +85,11 @@ func (c *Client) Call(method string, params Values) (*Value, error) {
 	respReader := bytes.NewBuffer(respBuf)
 	resp := &MethodResponse{}
 	dec := xml.NewDecoder(respReader)
-	dec.CharsetReader = charset.NewReaderLabel
+	// override wrong XML encoding attribute (ISO-8859-1) from ReGaHss, response
+	// is already encoded in UTF-8
+	dec.CharsetReader = func(charset string, input io.Reader) (io.Reader, error) {
+		return input, nil
+	}
 	err = dec.Decode(resp)
 	if err != nil {
 		return nil, fmt.Errorf("Decoding of response from %s failed: %v", c.Addr, err)
