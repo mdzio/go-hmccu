@@ -100,7 +100,7 @@ func run() error {
 			log.Debugf("Device %s is disposed", dev.Description().Address)
 		}
 		bp := vdevices.NewBoolParameter("BOOL_PARAM")
-		dev.AddMasterParam(&bp.Parameter)
+		dev.AddMasterParam(bp)
 
 		// maintenance channel
 		mch := vdevices.NewMaintenanceChannel(dev)
@@ -120,7 +120,7 @@ func run() error {
 				log.Debugf("Channel %s is disposed", sch.Description().Address)
 			}
 			bp = vdevices.NewBoolParameter("BOOL_PARAM")
-			sch.AddMasterParam(&bp.Parameter)
+			sch.AddMasterParam(bp)
 			log.Infof("Created switch channel: %s", sch.Description().Address)
 		}
 

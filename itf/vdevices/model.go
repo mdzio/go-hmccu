@@ -12,15 +12,19 @@ import (
 // implements interface GenericDevice. The structure of a device (channels and
 // parameters) must not be changed after adding to the Container.
 type Device struct {
+	sync.Mutex
+
 	description    *itf.DeviceDescription
 	masterParamset Paramset
-	channels       []*Channel
-	locker         sync.Mutex
+	channels       []GenericChannel
 	publisher      EventPublisher
 
 	// Handler for dispose of device (optional)
 	OnDispose func()
 }
+
+// check interface implementation
+var _ GenericDevice = (*Device)(nil)
 
 // NewDevice creates a Device.
 func NewDevice(address, deviceType string, publisher EventPublisher) *Device {
@@ -33,7 +37,7 @@ func NewDevice(address, deviceType string, publisher EventPublisher) *Device {
 			Version:   1,
 		},
 		publisher: publisher,
-		channels:  make([]*Channel, 0),
+		channels:  make([]GenericChannel, 0),
 	}
 }
 
@@ -68,7 +72,7 @@ func (d *Device) MasterParamset() GenericParamset {
 // AddChannel binds a channel to the device. Following fields in the channels
 // description are initialized: Parent, ParentType, Address, Index. Publisher of
 // the channel is set to the publisher of the device.
-func (d *Device) AddChannel(channel *Channel) {
+func (d *Device) AddChannel(channel GenericChannel) {
 	// complement channel description
 	idx := len(d.channels)
 	descr := channel.Description()
@@ -77,47 +81,45 @@ func (d *Device) AddChannel(channel *Channel) {
 	descr.Address = d.description.Address + ":" + strconv.Itoa(idx)
 	descr.Index = idx
 	// add channel to device
-	channel.publisher = d.publisher
+	channel.SetPublisher(d.publisher)
 	d.channels = append(d.channels, channel)
 	d.description.Children = append(d.description.Children, descr.Address)
 }
 
 // AddMasterParam adds a parameter to the master paramset.
-func (d *Device) AddMasterParam(parameter *Parameter) {
-	parameter.parentDescr = d.description
-	parameter.locker = &d.locker
+func (d *Device) AddMasterParam(parameter GenericParameter) {
+	parameter.SetParentDescr(d.description)
 	d.masterParamset.Add(parameter)
-}
-
-// Locker returns the device locker.
-func (d *Device) Locker() sync.Locker {
-	return &d.locker
 }
 
 // Dispose must be called, when the device should free resources. Function
 // OnDispose gets called, if specified. Afterwards Dispose of each channel is
 // invoked.
 func (d *Device) Dispose() {
-	if d.OnDispose != nil {
-		d.OnDispose()
-	}
 	// dispose channels
 	for _, ch := range d.channels {
 		ch.Dispose()
+	}
+	if d.OnDispose != nil {
+		d.OnDispose()
 	}
 }
 
 // Channel implements interface GenericChannel.
 type Channel struct {
+	sync.Mutex
+
 	description    *itf.DeviceDescription
 	masterParamset Paramset
 	valueParamset  Paramset
-	locker         sync.Mutex
 	publisher      EventPublisher
 
 	// Handler for dispose of channel (optional)
 	OnDispose func()
 }
+
+// check interface implementation
+var _ GenericChannel = (*Channel)(nil)
 
 // Init initializes Channel. This function must be called before any other
 // member function.
@@ -145,24 +147,22 @@ func (c *Channel) ValueParamset() GenericParamset {
 	return &c.valueParamset
 }
 
+// SetPublisher implements interface GenericChannel.
+func (c *Channel) SetPublisher(pub EventPublisher) {
+	c.publisher = pub
+}
+
 // AddMasterParam adds a parameter to the MASTER paramset.
-func (c *Channel) AddMasterParam(parameter *Parameter) {
-	parameter.parentDescr = c.description
-	parameter.locker = &c.locker
+func (c *Channel) AddMasterParam(parameter GenericParameter) {
+	parameter.SetParentDescr(c.description)
 	c.masterParamset.Add(parameter)
 }
 
 // AddValueParam adds a parameter to the VALUES paramset.
-func (c *Channel) AddValueParam(parameter *Parameter) {
-	parameter.parentDescr = c.description
-	parameter.locker = &c.locker
-	parameter.publisher = c.publisher
+func (c *Channel) AddValueParam(parameter GenericParameter) {
+	parameter.SetParentDescr(c.description)
+	parameter.SetPublisher(c.publisher)
 	c.valueParamset.Add(parameter)
-}
-
-// Locker returns the channel locker.
-func (c *Channel) Locker() sync.Locker {
-	return &c.locker
 }
 
 // Dispose must be called, when the channel should free resources. Function
@@ -175,8 +175,16 @@ func (c *Channel) Dispose() {
 
 // Paramset implements GenericParamset.
 type Paramset struct {
-	params map[string]*Parameter
+	params map[string]GenericParameter
+
+	// The optional putParamsetHandler is called after executing the RPC method
+	// putParamset. The corresponding device or channel is locked while
+	// executed.
+	putParamsetHandler func()
 }
+
+// check interface implementation
+var _ GenericParamset = (*Paramset)(nil)
 
 // Parameters implements interface GenericParamset.
 func (s *Paramset) Parameters() []GenericParameter {
@@ -196,10 +204,22 @@ func (s *Paramset) Parameter(id string) (GenericParameter, error) {
 	return p, nil
 }
 
-// Add adds a parameter to this parameter set.
-func (s *Paramset) Add(param *Parameter) {
-	if s.params == nil {
-		s.params = make(map[string]*Parameter)
+// NotifyPutParamset implements interface GenericParamset.
+func (s *Paramset) NotifyPutParamset() {
+	if s.putParamsetHandler != nil {
+		s.putParamsetHandler()
 	}
-	s.params[param.description.ID] = param
+}
+
+// HandlePutParamset implements interface GenericParamset.
+func (s *Paramset) HandlePutParamset(f func()) {
+	s.putParamsetHandler = f
+}
+
+// Add adds a parameter to this parameter set.
+func (s *Paramset) Add(param GenericParameter) {
+	if s.params == nil {
+		s.params = make(map[string]GenericParameter)
+	}
+	s.params[param.Description().ID] = param
 }

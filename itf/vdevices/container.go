@@ -14,7 +14,11 @@ type GenericDevice interface {
 	Channels() []GenericChannel
 	Channel(channelAddress string) (GenericChannel, error)
 
+	AddMasterParam(GenericParameter)
 	MasterParamset() GenericParamset
+
+	// The device must be locked while reading or writing the master paramset.
+	sync.Locker
 
 	Dispose()
 }
@@ -23,28 +27,45 @@ type GenericDevice interface {
 type GenericChannel interface {
 	Description() *itf.DeviceDescription
 
+	SetPublisher(publisher EventPublisher)
+
+	AddMasterParam(GenericParameter)
 	MasterParamset() GenericParamset
+
+	AddValueParam(GenericParameter)
 	ValueParamset() GenericParamset
+
+	// The channel must be locked while reading or writing paramsets.
+	sync.Locker
+
+	Dispose()
 }
 
 // GenericParamset that can be used by Handler.
 type GenericParamset interface {
 	Parameters() []GenericParameter
 	Parameter(id string) (GenericParameter, error)
-}
 
-type ValueAccessor interface {
-	SetValue(value interface{}) error
-	// no OnSet callback is executed and write access is not checked
-	SetValueUnchecked(value interface{}) error
-	Value() interface{}
+	// NotifyPutParamset is called after executing the RPC method putParamset.
+	// The corresponding device or channel is locked while executed.
+	NotifyPutParamset()
+
+	// HandlePutParamset registers a handler for NotifyPutParamset.
+	HandlePutParamset(func())
 }
 
 // GenericParameter that can be used by Handler.
 type GenericParameter interface {
 	Description() *itf.ParameterDescription
 
-	ValueAccessor
+	SetParentDescr(parentDescr *itf.DeviceDescription)
+	SetPublisher(publisher EventPublisher)
+
+	// Following methods must only be called with the channel locked.
+	SetValue(value interface{}) error
+	// no callbacks are executed and write access is not checked
+	InternalSetValue(value interface{}) error
+	Value() interface{}
 }
 
 // A Container manages virtual devices and can be used by Handler. Devices can

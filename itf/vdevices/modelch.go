@@ -5,12 +5,12 @@ import (
 )
 
 // addInstallTest adds the INSTALL_TEST parameter for simulating a channel/device test
-func addInstallTest(ch *Channel) {
+func addInstallTest(ch GenericChannel) {
 	p := NewBoolParameter("INSTALL_TEST")
 	p.description.Type = itf.ParameterTypeAction
 	p.description.Operations = itf.ParameterOperationWrite
 	p.description.Flags = itf.ParameterFlagVisible | itf.ParameterFlagInternal
-	ch.AddValueParam(&p.Parameter)
+	ch.AddValueParam(p)
 }
 
 // MaintenanceChannel is a standard HM device maintenance channel. The first
@@ -29,28 +29,28 @@ func NewMaintenanceChannel(device *Device) *MaintenanceChannel {
 	c.Channel.Init("MAINTENANCE")
 	c.description.Flags = itf.DeviceFlagVisible | itf.DeviceFlagInternal
 	// adding channel to device also initializes some fields
-	device.AddChannel(&c.Channel)
-	addInstallTest(&c.Channel)
+	device.AddChannel(c)
+	addInstallTest(c)
 
 	// add UNREACH parameter
 	c.unreach = NewBoolParameter("UNREACH")
 	c.unreach.description.Operations = itf.ParameterOperationRead | itf.ParameterOperationEvent
 	c.unreach.description.Flags = itf.ParameterFlagVisible | itf.ParameterFlagService
-	c.AddValueParam(&c.unreach.Parameter)
+	c.AddValueParam(c.unreach)
 
 	// add STICKY_UNREACH parameter
 	c.stickyUnreach = NewBoolParameter("STICKY_UNREACH")
 	c.stickyUnreach.description.Operations = itf.ParameterOperationRead | itf.ParameterOperationWrite | itf.ParameterOperationEvent
 	c.stickyUnreach.description.Flags = itf.ParameterFlagVisible | itf.ParameterFlagService | itf.ParameterFlagSticky
-	c.AddValueParam(&c.stickyUnreach.Parameter)
+	c.AddValueParam(c.stickyUnreach)
 	return c
 }
 
 // SetUnreach sets the connection state of the device.
 func (c *MaintenanceChannel) SetUnreach(value bool) {
-	c.unreach.SetValueUnchecked(value)
+	c.unreach.InternalSetValue(value)
 	if value {
-		c.stickyUnreach.SetValueUnchecked(true)
+		c.stickyUnreach.InternalSetValue(true)
 	}
 }
 
@@ -85,13 +85,13 @@ func NewSwitchChannel(device *Device) *SwitchChannel {
 			return true
 		}
 	}
-	c.AddValueParam(&c.state.Parameter)
+	c.AddValueParam(c.state)
 	return c
 }
 
 // SetState sets the state of the switch.
 func (c *SwitchChannel) SetState(value bool) {
-	c.state.SetValueUnchecked(value)
+	c.state.InternalSetValue(value)
 }
 
 // State returns the state of the switch.
@@ -129,7 +129,7 @@ func NewKeyChannel(device *Device) *KeyChannel {
 			return true
 		}
 	}
-	c.AddValueParam(&c.pressShort.Parameter)
+	c.AddValueParam(c.pressShort)
 
 	// add PRESS_LONG parameter
 	c.pressLong = NewBoolParameter("PRESS_LONG")
@@ -143,18 +143,18 @@ func NewKeyChannel(device *Device) *KeyChannel {
 			return true
 		}
 	}
-	c.AddValueParam(&c.pressLong.Parameter)
+	c.AddValueParam(c.pressLong)
 	return c
 }
 
 // PressShort sends a press short event.
 func (c *KeyChannel) PressShort() {
-	c.pressShort.SetValueUnchecked(true)
+	c.pressShort.InternalSetValue(true)
 }
 
 // PressShort sends a press long event.
 func (c *KeyChannel) PressLong() {
-	c.pressShort.SetValueUnchecked(true)
+	c.pressLong.InternalSetValue(true)
 }
 
 // AnalogInputChannel implements a HM analog input channel (e.g.
@@ -191,7 +191,7 @@ func NewAnalogInputChannel(device *Device) *AnalogInputChannel {
 			return true
 		}
 	}
-	c.AddValueParam(&c.voltage.Parameter)
+	c.AddValueParam(c.voltage)
 
 	// add VOLTAGE_STATUS parameter
 	c.voltageStatus = NewIntParameter("VOLTAGE_STATUS")
@@ -221,13 +221,13 @@ func NewAnalogInputChannel(device *Device) *AnalogInputChannel {
 			return true
 		}
 	}
-	c.AddValueParam(&c.voltageStatus.Parameter)
+	c.AddValueParam(c.voltageStatus)
 	return c
 }
 
 // SetVoltage sets the voltage of the analog input.
 func (c *AnalogInputChannel) SetVoltage(value float64) {
-	c.voltage.SetValueUnchecked(value)
+	c.voltage.InternalSetValue(value)
 }
 
 // Voltage returns the voltage of the analog input.
@@ -237,7 +237,7 @@ func (c *AnalogInputChannel) Voltage() float64 {
 
 // SetVoltageStatus sets the voltage status of the analog input.
 func (c *AnalogInputChannel) SetVoltageStatus(value int) {
-	c.voltageStatus.SetValueUnchecked(value)
+	c.voltageStatus.InternalSetValue(value)
 }
 
 // VoltageStatus returns the voltage status of the analog input.

@@ -184,7 +184,7 @@ func (h *Handler) GetDeviceDescription(address string) (*itf.DeviceDescription, 
 
 // GetParamsetDescription implements DeviceLayer.
 func (h *Handler) GetParamsetDescription(address, paramsetKey string) (itf.ParamsetDescription, error) {
-	paramset, err := h.getParamset(address, paramsetKey)
+	_, paramset, err := h.getParamset(address, paramsetKey)
 	if err != nil {
 		return nil, err
 	}
@@ -197,11 +197,13 @@ func (h *Handler) GetParamsetDescription(address, paramsetKey string) (itf.Param
 
 // GetParamset implements DeviceLayer.
 func (h *Handler) GetParamset(address string, paramsetKey string) (map[string]interface{}, error) {
-	paramset, err := h.getParamset(address, paramsetKey)
+	locker, paramset, err := h.getParamset(address, paramsetKey)
 	if err != nil {
 		return nil, err
 	}
 	values := make(map[string]interface{})
+	locker.Lock()
+	defer locker.Unlock()
 	for _, param := range paramset.Parameters() {
 		values[param.Description().ID] = param.Value()
 	}
@@ -210,10 +212,12 @@ func (h *Handler) GetParamset(address string, paramsetKey string) (map[string]in
 
 // PutParamset implements DeviceLayer.
 func (h *Handler) PutParamset(address string, paramsetKey string, values map[string]interface{}) error {
-	paramset, err := h.getParamset(address, paramsetKey)
+	locker, paramset, err := h.getParamset(address, paramsetKey)
 	if err != nil {
 		return err
 	}
+	locker.Lock()
+	defer locker.Unlock()
 	for name, value := range values {
 		param, err := paramset.Parameter(name)
 		if err != nil {
@@ -224,12 +228,13 @@ func (h *Handler) PutParamset(address string, paramsetKey string, values map[str
 			return err
 		}
 	}
+	paramset.NotifyPutParamset()
 	return nil
 }
 
 // GetValue implements DeviceLayer.
 func (h *Handler) GetValue(address string, valueName string) (interface{}, error) {
-	paramset, err := h.getParamset(address, "VALUES")
+	locker, paramset, err := h.getParamset(address, "VALUES")
 	if err != nil {
 		return nil, err
 	}
@@ -237,12 +242,14 @@ func (h *Handler) GetValue(address string, valueName string) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
+	locker.Lock()
+	defer locker.Unlock()
 	return param.Value(), nil
 }
 
 // SetValue implements DeviceLayer.
 func (h *Handler) SetValue(address string, valueName string, value interface{}) error {
-	paramset, err := h.getParamset(address, "VALUES")
+	locker, paramset, err := h.getParamset(address, "VALUES")
 	if err != nil {
 		return err
 	}
@@ -250,6 +257,8 @@ func (h *Handler) SetValue(address string, valueName string, value interface{}) 
 	if err != nil {
 		return err
 	}
+	locker.Lock()
+	defer locker.Unlock()
 	return param.SetValue(value)
 }
 
@@ -259,31 +268,31 @@ func (h *Handler) Ping(callerID string) (bool, error) {
 	return true, nil
 }
 
-func (h *Handler) getParamset(address string, paramsetKey string) (GenericParamset, error) {
+func (h *Handler) getParamset(address string, paramsetKey string) (sync.Locker, GenericParamset, error) {
 	deviceAddr, channelAddr := itf.SplitAddress(address)
 	device, err := h.devices.Device(deviceAddr)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if channelAddr == "" {
 		switch paramsetKey {
 		case "MASTER":
-			return device.MasterParamset(), nil
+			return device, device.MasterParamset(), nil
 		default:
-			return nil, fmt.Errorf("Invalid paramset key for %s: %s", address, paramsetKey)
+			return nil, nil, fmt.Errorf("Invalid paramset key for %s: %s", address, paramsetKey)
 		}
 	}
 	channel, err := device.Channel(channelAddr)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	switch paramsetKey {
 	case "MASTER":
-		return channel.MasterParamset(), nil
+		return channel, channel.MasterParamset(), nil
 	case "VALUES":
-		return channel.ValueParamset(), nil
+		return channel, channel.ValueParamset(), nil
 	default:
-		return nil, fmt.Errorf("Invalid paramset key for %s: %s", address, paramsetKey)
+		return nil, nil, fmt.Errorf("Invalid paramset key for %s: %s", address, paramsetKey)
 	}
 }
 

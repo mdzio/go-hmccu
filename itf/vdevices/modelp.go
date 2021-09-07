@@ -2,19 +2,25 @@ package vdevices
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/mdzio/go-hmccu/itf"
 )
 
-// Parameter implements ValueAccessor and therefore GenericParameter.
+// Parameter implements GenericParameter.
 type Parameter struct {
-	ValueAccessor
-
 	description *itf.ParameterDescription
 	parentDescr *itf.DeviceDescription
-	locker      sync.Locker
 	publisher   EventPublisher
+}
+
+// SetParentDescr implements interface GenericParameter.
+func (p *Parameter) SetParentDescr(parentDescr *itf.DeviceDescription) {
+	p.parentDescr = parentDescr
+}
+
+// SetPublisher implements interface GenericParameter.
+func (p *Parameter) SetPublisher(publisher EventPublisher) {
+	p.publisher = publisher
 }
 
 // Description implements interface GenericParameter.
@@ -35,11 +41,15 @@ type BoolParameter struct {
 	Parameter
 
 	// This callback is executed when an external system wants to change the
-	// value. Only if this function returns true, the value is actually set.
+	// value. Only if this function returns true, the value is actually set. The
+	// device/channel is locked.
 	OnSetValue func(value bool) (ok bool)
 
 	value bool
 }
+
+// check interface implementation
+var _ GenericParameter = (*BoolParameter)(nil)
 
 // NewBoolParameter creates a BoolParameter (Type: BOOL). For an ACTION parameter
 // Type must be modified accordingly. The locker of the channel is used while
@@ -47,7 +57,7 @@ type BoolParameter struct {
 // initialized to standard values: Type, Operation, Flags, Default, Min, Max,
 // ID.
 func NewBoolParameter(id string) *BoolParameter {
-	p := &BoolParameter{
+	return &BoolParameter{
 		Parameter: Parameter{
 			description: &itf.ParameterDescription{
 				Type:       itf.ParameterTypeBool,
@@ -60,8 +70,6 @@ func NewBoolParameter(id string) *BoolParameter {
 			},
 		},
 	}
-	p.ValueAccessor = p
-	return p
 }
 
 // SetValue implements interface GenericParameter. This accessor is for external
@@ -74,29 +82,20 @@ func (p *BoolParameter) SetValue(value interface{}) error {
 	if !ok {
 		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
 	}
-	if p.OnSetValue == nil {
-		ok = true
-	} else {
-		ok = p.OnSetValue(bvalue)
-	}
-	if ok {
+	if p.OnSetValue == nil || p.OnSetValue(bvalue) {
 		p.publishValue(bvalue)
-		p.locker.Lock()
-		defer p.locker.Unlock()
 		p.value = bvalue
 	}
 	return nil
 }
 
-// SetValueUnchecked implements ValueAccessor.
-func (p *BoolParameter) SetValueUnchecked(value interface{}) error {
+// InternalSetValue implements ValueAccessor.
+func (p *BoolParameter) InternalSetValue(value interface{}) error {
 	bvalue, ok := value.(bool)
 	if !ok {
 		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
 	}
 	p.publishValue(bvalue)
-	p.locker.Lock()
-	defer p.locker.Unlock()
 	p.value = bvalue
 	return nil
 }
@@ -104,8 +103,6 @@ func (p *BoolParameter) SetValueUnchecked(value interface{}) error {
 // Value implements interface GenericParameter.  This accessor is for external
 // systems.
 func (p *BoolParameter) Value() interface{} {
-	p.locker.Lock()
-	defer p.locker.Unlock()
 	return p.value
 }
 
@@ -114,11 +111,15 @@ type IntParameter struct {
 	Parameter
 
 	// This callback is executed when an external system wants to change the
-	// value. Only if this function returns true, the value is actually set.
+	// value. Only if this function returns true, the value is actually set. The
+	// device/channel is locked.
 	OnSetValue func(value int) (ok bool)
 
 	value int
 }
+
+// check interface implementation
+var _ GenericParameter = (*IntParameter)(nil)
 
 // NewIntParameter creates an IntParameter (Type: INTEGER). For an ENUM
 // parameter Type must be modified accordingly. The locker of the channel is
@@ -126,7 +127,7 @@ type IntParameter struct {
 // description are initialized to standard values: Type, Operation, Flags,
 // Default (0), Min (-100000), Max (100000), ID.
 func NewIntParameter(id string) *IntParameter {
-	p := &IntParameter{
+	return &IntParameter{
 		Parameter: Parameter{
 			description: &itf.ParameterDescription{
 				Type:       itf.ParameterTypeInteger,
@@ -139,8 +140,34 @@ func NewIntParameter(id string) *IntParameter {
 			},
 		},
 	}
-	p.ValueAccessor = p
-	return p
+}
+
+func (p *IntParameter) toInt(value interface{}) (int, error) {
+	ivalue, ok := value.(int)
+	if !ok {
+		// accept float64 as well
+		fvalue, fok := value.(float64)
+		if fok {
+			ivalue = int(fvalue)
+			// accept only integer numbers
+			ok = float64(ivalue) == fvalue
+		}
+		if !ok {
+			return 0, fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
+		}
+	}
+	// check range only for ENUM
+	if p.Description().Type == itf.ParameterTypeEnum {
+		min, ok := p.Description().Min.(int)
+		if ok && ivalue < min {
+			return 0, fmt.Errorf("Value below minimum for parameter %s.%s: %v", p.parentDescr.Address, p.description.ID, ivalue)
+		}
+		max, ok := p.Description().Max.(int)
+		if ok && ivalue > max {
+			return 0, fmt.Errorf("Value above maximum for parameter %s.%s: %v", p.parentDescr.Address, p.description.ID, ivalue)
+		}
+	}
+	return ivalue, nil
 }
 
 // SetValue implements interface GenericParameter. This accessor is for external
@@ -149,33 +176,24 @@ func (p *IntParameter) SetValue(value interface{}) error {
 	if p.description.Operations&itf.ParameterOperationWrite == 0 {
 		return fmt.Errorf("Parameter not writeable: %s.%s", p.parentDescr.Address, p.description.ID)
 	}
-	ivalue, ok := value.(int)
-	if !ok {
-		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
+	ivalue, err := p.toInt(value)
+	if err != nil {
+		return err
 	}
-	if p.OnSetValue == nil {
-		ok = true
-	} else {
-		ok = p.OnSetValue(ivalue)
-	}
-	if ok {
+	if p.OnSetValue == nil || p.OnSetValue(ivalue) {
 		p.publishValue(ivalue)
-		p.locker.Lock()
-		defer p.locker.Unlock()
 		p.value = ivalue
 	}
 	return nil
 }
 
-// SetValueUnchecked implements ValueAccessor.
-func (p *IntParameter) SetValueUnchecked(value interface{}) error {
-	ivalue, ok := value.(int)
-	if !ok {
-		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
+// InternalSetValue implements ValueAccessor.
+func (p *IntParameter) InternalSetValue(value interface{}) error {
+	ivalue, err := p.toInt(value)
+	if err != nil {
+		return err
 	}
 	p.publishValue(ivalue)
-	p.locker.Lock()
-	defer p.locker.Unlock()
 	p.value = ivalue
 	return nil
 }
@@ -183,8 +201,6 @@ func (p *IntParameter) SetValueUnchecked(value interface{}) error {
 // Value implements interface GenericParameter.  This accessor is for external
 // systems.
 func (p *IntParameter) Value() interface{} {
-	p.locker.Lock()
-	defer p.locker.Unlock()
 	return p.value
 }
 
@@ -193,18 +209,22 @@ type FloatParameter struct {
 	Parameter
 
 	// This callback is executed when an external system wants to change the
-	// value. Only if this function returns true, the value is actually set.
+	// value. Only if this function returns true, the value is actually set. The
+	// device/channel is locked.
 	OnSetValue func(value float64) (ok bool)
 
 	value float64
 }
+
+// check interface implementation
+var _ GenericParameter = (*FloatParameter)(nil)
 
 // NewFloatParameter creates a FloatParameter (Type: FLOAT). The locker of the
 // channel is used while modifying the value. Following fields in the parameters
 // description are initialized to standard values: Type, Operation, Flags,
 // Default (0.0), Min (-100000), Max (100000), ID.
 func NewFloatParameter(id string) *FloatParameter {
-	p := &FloatParameter{
+	return &FloatParameter{
 		Parameter: Parameter{
 			description: &itf.ParameterDescription{
 				Type:       itf.ParameterTypeFloat,
@@ -217,8 +237,6 @@ func NewFloatParameter(id string) *FloatParameter {
 			},
 		},
 	}
-	p.ValueAccessor = p
-	return p
 }
 
 // SetValue implements interface GenericParameter. This accessor is for external
@@ -231,29 +249,20 @@ func (p *FloatParameter) SetValue(value interface{}) error {
 	if !ok {
 		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
 	}
-	if p.OnSetValue == nil {
-		ok = true
-	} else {
-		ok = p.OnSetValue(fvalue)
-	}
-	if ok {
+	if p.OnSetValue == nil || p.OnSetValue(fvalue) {
 		p.publishValue(fvalue)
-		p.locker.Lock()
-		defer p.locker.Unlock()
 		p.value = fvalue
 	}
 	return nil
 }
 
-// SetValueUnchecked implements ValueAccessor.
-func (p *FloatParameter) SetValueUnchecked(value interface{}) error {
+// InternalSetValue implements ValueAccessor.
+func (p *FloatParameter) InternalSetValue(value interface{}) error {
 	fvalue, ok := value.(float64)
 	if !ok {
 		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
 	}
 	p.publishValue(fvalue)
-	p.locker.Lock()
-	defer p.locker.Unlock()
 	p.value = fvalue
 	return nil
 }
@@ -261,8 +270,6 @@ func (p *FloatParameter) SetValueUnchecked(value interface{}) error {
 // Value implements interface GenericParameter.  This accessor is for external
 // systems.
 func (p *FloatParameter) Value() interface{} {
-	p.locker.Lock()
-	defer p.locker.Unlock()
 	return p.value
 }
 
@@ -271,18 +278,22 @@ type StringParameter struct {
 	Parameter
 
 	// This callback is executed when an external system wants to change the
-	// value. Only if this function returns true, the value is actually set.
+	// value. Only if this function returns true, the value is actually set. The
+	// device/channel is locked.
 	OnSetValue func(value string) (ok bool)
 
 	value string
 }
+
+// check interface implementation
+var _ GenericParameter = (*StringParameter)(nil)
 
 // NewStringParameter creates a StringParameter (Type: STRING). The locker of
 // the channel is used while modifying the value. Following fields in the
 // parameters description are initialized to standard values: Type, Operation,
 // Flags, Default (""), Min (""), Max (""), ID.
 func NewStringParameter(id string) *StringParameter {
-	p := &StringParameter{
+	return &StringParameter{
 		Parameter: Parameter{
 			description: &itf.ParameterDescription{
 				Type:       itf.ParameterTypeString,
@@ -295,8 +306,6 @@ func NewStringParameter(id string) *StringParameter {
 			},
 		},
 	}
-	p.ValueAccessor = p
-	return p
 }
 
 // SetValue implements interface GenericParameter. This accessor is for external
@@ -309,29 +318,20 @@ func (p *StringParameter) SetValue(value interface{}) error {
 	if !ok {
 		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
 	}
-	if p.OnSetValue == nil {
-		ok = true
-	} else {
-		ok = p.OnSetValue(svalue)
-	}
-	if ok {
+	if p.OnSetValue == nil || p.OnSetValue(svalue) {
 		p.publishValue(svalue)
-		p.locker.Lock()
-		defer p.locker.Unlock()
 		p.value = svalue
 	}
 	return nil
 }
 
-// SetValueUnchecked implements ValueAccessor.
-func (p *StringParameter) SetValueUnchecked(value interface{}) error {
+// InternalSetValue implements ValueAccessor.
+func (p *StringParameter) InternalSetValue(value interface{}) error {
 	svalue, ok := value.(string)
 	if !ok {
 		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
 	}
 	p.publishValue(svalue)
-	p.locker.Lock()
-	defer p.locker.Unlock()
 	p.value = svalue
 	return nil
 }
@@ -339,7 +339,5 @@ func (p *StringParameter) SetValueUnchecked(value interface{}) error {
 // Value implements interface GenericParameter.  This accessor is for external
 // systems.
 func (p *StringParameter) Value() interface{} {
-	p.locker.Lock()
-	defer p.locker.Unlock()
 	return p.value
 }
