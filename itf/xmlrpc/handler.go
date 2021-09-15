@@ -3,12 +3,14 @@ package xmlrpc
 import (
 	"bytes"
 	"encoding/xml"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 
 	"github.com/mdzio/go-logging"
+
+	"golang.org/x/net/html/charset"
+	"golang.org/x/text/encoding/charmap"
 )
 
 // max. size of a valid request, if not specified: 10 MB
@@ -39,6 +41,7 @@ func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if svrLog.TraceEnabled() {
+		// attention: log message is probably ISO8859-1 encoded!
 		svrLog.Tracef("Request XML: %s", string(reqBuf))
 	}
 
@@ -46,11 +49,7 @@ func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	reqReader := bytes.NewBuffer(reqBuf)
 	methodCall := &MethodCall{}
 	dec := xml.NewDecoder(reqReader)
-	// override wrong XML encoding attribute (ISO-8859-1) from ReGaHss, request
-	// is already encoded in UTF-8
-	dec.CharsetReader = func(charset string, input io.Reader) (io.Reader, error) {
-		return input, nil
-	}
+	dec.CharsetReader = charset.NewReaderLabel
 	err = dec.Decode(methodCall)
 	if err != nil {
 		svrLog.Errorf("Decoding of request from %s failed: %v", req.RemoteAddr, err)
@@ -78,12 +77,15 @@ func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		methodResponse = newMethodResponse(res)
 	}
 
-	// write xml header, use standard UTF-8 character encoding for response
+	// use ISO8859-1 character encoding for response
 	var respBuf bytes.Buffer
-	respBuf.Write([]byte("<?xml version=\"1.0\"?>\n"))
+	respWriter := charmap.ISO8859_1.NewEncoder().Writer(&respBuf)
+
+	// write xml header
+	respWriter.Write([]byte("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n"))
 
 	// encode response to xml
-	enc := xml.NewEncoder(&respBuf)
+	enc := xml.NewEncoder(respWriter)
 	err = enc.Encode(methodResponse)
 	if err != nil {
 		svrLog.Errorf("Encoding of response for %s failed: %v", req.RemoteAddr, err)
@@ -91,6 +93,7 @@ func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if svrLog.TraceEnabled() {
+		// attention: log message is ISO8859-1 encoded!
 		svrLog.Tracef("Response XML: %s", respBuf.String())
 	}
 
