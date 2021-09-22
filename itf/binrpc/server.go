@@ -135,7 +135,7 @@ func (s *Server) handle(conn net.Conn) {
 			svrLog.Errorf("Encoding of fault response %v failed: %v", merr, err)
 			return
 		}
-		svrLog.Tracef("Sending response to %s: %v", conn.RemoteAddr(), merr)
+		svrLog.Warningf("Sending error response to %s: %v", conn.RemoteAddr(), merr)
 	} else {
 		// encode method result
 		err := e.EncodeResponse(res)

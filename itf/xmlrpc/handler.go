@@ -72,6 +72,7 @@ func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	res, err := h.Dispatch(methodCall.MethodName, args)
 	var methodResponse *MethodResponse
 	if err != nil {
+		svrLog.Warningf("Sending error response to %s: %v", req.RemoteAddr, err)
 		methodResponse = newFaultResponse(err)
 	} else {
 		methodResponse = newMethodResponse(res)

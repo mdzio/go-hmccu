@@ -17,8 +17,8 @@ const (
 
 	// Following types are currently not supported and not needed for CUxD
 	// support.
-	timeType   = 0x05
-	binaryType = 0x06
+	//timeType   = 0x05
+	//binaryType = 0x06
 
 	mantissaMultiplicator = 0x40000000
 )

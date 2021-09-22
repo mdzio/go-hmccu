@@ -39,7 +39,7 @@ func TestClient_Call(t *testing.T) {
 	}
 
 	// test unknown instance
-	d, err = c.Call("getDeviceDescription", []*xmlrpc.Value{{FlatString: "ZZZ9999999:1"}})
+	_, err = c.Call("getDeviceDescription", []*xmlrpc.Value{{FlatString: "ZZZ9999999:1"}})
 	if err == nil {
 		t.Error("error expected")
 	} else if err.Error() != "RPC fault (code: -2, message: Unknown instance)" {

@@ -3,6 +3,8 @@ package vdevices
 import (
 	"fmt"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -223,6 +225,11 @@ func (h *Handler) PutParamset(address string, paramsetKey string, values map[str
 		if err != nil {
 			return err
 		}
+		// workaround for bug in CCU/RM
+		value, err = fixStringParamValue(value)
+		if err != nil {
+			return fmt.Errorf("Setting of paramset %s of device/channel %s failed: %v", paramsetKey, address, err)
+		}
 		err = param.SetValue(value)
 		if err != nil {
 			return err
@@ -256,6 +263,11 @@ func (h *Handler) SetValue(address string, valueName string, value interface{}) 
 	param, err := paramset.Parameter(valueName)
 	if err != nil {
 		return err
+	}
+	// workaround for bug in CCU/RM
+	value, err = fixStringParamValue(value)
+	if err != nil {
+		return fmt.Errorf("Setting of parameter %s of channel %s failed: %v", valueName, address, err)
 	}
 	locker.Lock()
 	defer locker.Unlock()
@@ -333,4 +345,29 @@ func AddToInterfaceList(inFilePath, outFilePath, name, url, info string) error {
 		return err
 	}
 	return nil
+}
+
+var decHTMLEntity = regexp.MustCompile(`&#\d+;`)
+
+// Work around for known bug in CCU/RM:
+// https://github.com/jens-maus/RaspberryMatic/issues/1417
+func fixStringParamValue(in interface{}) (interface{}, error) {
+	str, ok := in.(string)
+	// not a string?
+	if !ok {
+		return in, nil
+	}
+	// non ASCII characters are problematic
+	for i := 0; i < len(str); i++ {
+		if str[i] >= 0x80 {
+			return nil, fmt.Errorf("non ASCII character in string: %s", str)
+		}
+	}
+	// replace decimal HTML entities
+	str = decHTMLEntity.ReplaceAllStringFunc(str, func(s string) string {
+		// only single byte ASCII characters in s
+		c, _ := strconv.Atoi(s[2 : len(s)-1])
+		return string(rune(c))
+	})
+	return str, nil
 }
