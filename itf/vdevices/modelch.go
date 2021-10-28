@@ -54,8 +54,8 @@ func (c *MaintenanceChannel) SetUnreach(value bool) {
 	}
 }
 
-// SwitchChannel implements a standard HM switch channel.
-type SwitchChannel struct {
+// DigitalChannel implements a standard HM switch channel.
+type DigitalChannel struct {
 	Channel
 
 	// This callback is executed when an external system wants to change the
@@ -65,19 +65,19 @@ type SwitchChannel struct {
 	state *BoolParameter
 }
 
-// NewSwitchChannel creates a new HM switch channel and adds it to the device.
+// NewDigitalChannel creates a new HM digital channel and adds it to the device.
 // The field OnSetState must be set to be able to react to external value
 // changes.
-func NewSwitchChannel(device *Device) *SwitchChannel {
-	c := new(SwitchChannel)
-	c.Channel.Init("SWITCH")
+func NewDigitalChannel(device *Device, channelType, control string) *DigitalChannel {
+	c := new(DigitalChannel)
+	c.Channel.Init(channelType)
 	// adding channel to device also initializes some fields
 	device.AddChannel(&c.Channel)
 	addInstallTest(&c.Channel)
 
 	// add STATE parameter
 	c.state = NewBoolParameter("STATE")
-	c.state.description.Control = "SWITCH.STATE"
+	c.state.description.Control = control
 	c.state.OnSetValue = func(value bool) bool {
 		if c.OnSetState != nil {
 			return c.OnSetState(value)
@@ -90,13 +90,27 @@ func NewSwitchChannel(device *Device) *SwitchChannel {
 }
 
 // SetState sets the state of the switch.
-func (c *SwitchChannel) SetState(value bool) {
+func (c *DigitalChannel) SetState(value bool) {
 	c.state.InternalSetValue(value)
 }
 
 // State returns the state of the switch.
-func (c *SwitchChannel) State() bool {
+func (c *DigitalChannel) State() bool {
 	return c.state.Value().(bool)
+}
+
+// NewSwitchChannel creates a new HM switch channel and adds it to the device.
+// The field OnSetState must be set to be able to react to external value
+// changes.
+func NewSwitchChannel(device *Device) *DigitalChannel {
+	return NewDigitalChannel(device, "SWITCH", "SWITCH.STATE")
+}
+
+// NewDoorSensorChannel creates a new HM door sensor channel and adds it to the
+// device. The field OnSetState must be set to be able to react to external
+// value changes.
+func NewDoorSensorChannel(device *Device) *DigitalChannel {
+	return NewDigitalChannel(device, "SHUTTER_CONTACT", "DOOR_SENSOR.STATE")
 }
 
 // KeyChannel implements a standard HM key channel.
