@@ -107,11 +107,15 @@ func (h *Handler) Init(receiverAddress, interfaceID string) error {
 	var addr string
 	switch receiverAddress {
 	case "xmlrpc_bin://127.0.0.1:31999":
+		// non-binary XML-RPC works for ReGaHss also
 		addr = h.ccuAddr + ":1999"
 		log.Debugf("Patched receiver address: %s", addr)
 	case "http://127.0.0.1:39292/bidcos":
 		addr = h.ccuAddr + ":9292/bidcos"
 		log.Debugf("Patched receiver address: %s", addr)
+	default:
+		// remove protocol prefix
+		addr = strings.TrimPrefix(strings.TrimPrefix(receiverAddress, "http://"), "xmlrpc://")
 	}
 
 	// create new servant
