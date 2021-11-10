@@ -258,3 +258,151 @@ func (c *AnalogInputChannel) SetVoltageStatus(value int) {
 func (c *AnalogInputChannel) VoltageStatus() int {
 	return c.voltageStatus.Value().(int)
 }
+
+// Dimmer implements a HM dimmer channel (e.g. HM-LC-Dim1TPBU-FM:1).
+type Dimmer struct {
+	Channel
+
+	// These callbacks are executed when an external system wants to change the
+	// values. Only if the function returns true, the value is actually set.
+	OnSetLevel    func(value float64) (ok bool)
+	OnSetOldLevel func() (ok bool)
+	OnSetRampTime func(value float64) (ok bool)
+	OnSetOnTime   func(value float64) (ok bool)
+
+	level    *FloatParameter
+	oldLevel *BoolParameter
+	rampTime *FloatParameter
+	onTime   *FloatParameter
+	working  *BoolParameter
+}
+
+// NewDimmerChannel creates a new HM dimmer channel and adds it to the device.
+func NewDimmerChannel(device *Device) *Dimmer {
+	c := new(Dimmer)
+	c.Channel.Init("DIMMER")
+	// adding channel to device also initializes some fields
+	device.AddChannel(&c.Channel)
+	addInstallTest(&c.Channel)
+
+	// add LEVEL parameter
+	c.level = NewFloatParameter("LEVEL")
+	c.level.description.Control = "DIMMER.LEVEL"
+	c.level.description.TabOrder = 0
+	c.level.description.Default = 0.0
+	c.level.description.Min = 0.0
+	c.level.description.Max = 1.0
+	c.level.description.Unit = "100%"
+	c.level.OnSetValue = func(value float64) bool {
+		if c.OnSetLevel != nil {
+			return c.OnSetLevel(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.level)
+
+	// add OLD_LEVEL parameter
+	c.oldLevel = NewBoolParameter("OLD_LEVEL")
+	c.oldLevel.description.Control = "DIMMER.OLD_LEVEL"
+	c.oldLevel.description.TabOrder = 1
+	c.oldLevel.description.Type = itf.ParameterTypeAction
+	c.oldLevel.description.Operations = itf.ParameterOperationWrite
+	c.oldLevel.OnSetValue = func(value bool) bool {
+		if c.OnSetOldLevel != nil {
+			return c.OnSetOldLevel()
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.oldLevel)
+
+	// add RAMP_TIME parameter
+	c.rampTime = NewFloatParameter("RAMP_TIME")
+	c.rampTime.description.Operations = itf.ParameterOperationWrite
+	c.rampTime.description.Control = "NONE"
+	c.rampTime.description.TabOrder = 2
+	// set default value
+	c.rampTime.description.Default = 0.5
+	c.rampTime.value = 0.5
+	c.rampTime.description.Min = 0.0
+	c.rampTime.description.Max = 8.58259456e+07
+	c.rampTime.description.Unit = "s"
+	c.rampTime.OnSetValue = func(value float64) bool {
+		if c.OnSetRampTime != nil {
+			return c.OnSetRampTime(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.rampTime)
+
+	// add ON_TIME parameter
+	c.onTime = NewFloatParameter("ON_TIME")
+	c.onTime.description.Operations = itf.ParameterOperationWrite
+	c.onTime.description.Control = "NONE"
+	c.onTime.description.TabOrder = 3
+	// set default value
+	c.onTime.description.Default = 0.5
+	c.onTime.value = 0.5
+	c.onTime.description.Min = 0.0
+	c.onTime.description.Max = 8.58259456e+07
+	c.onTime.description.Unit = "s"
+	c.onTime.OnSetValue = func(value float64) bool {
+		if c.OnSetOnTime != nil {
+			return c.OnSetOnTime(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.onTime)
+
+	// add WORKING parameter
+	c.working = NewBoolParameter("WORKING")
+	c.working.description.Operations = itf.ParameterOperationRead | itf.ParameterOperationEvent
+	c.working.description.Flags = itf.ParameterFlagVisible | itf.ParameterFlagInternal
+	c.working.description.TabOrder = 4
+	c.AddValueParam(c.working)
+
+	return c
+}
+
+// SetLevel sets the level of the dimmer.
+func (c *Dimmer) SetLevel(value float64) {
+	c.level.InternalSetValue(value)
+}
+
+// Level returns the level of the dimmer.
+func (c *Dimmer) Level() float64 {
+	return c.level.Value().(float64)
+}
+
+// SetRampTime sets the ramp time of the dimmer.
+func (c *Dimmer) SetRampTime(value float64) {
+	c.rampTime.InternalSetValue(value)
+}
+
+// RampTime returns the ramp time of the dimmer.
+func (c *Dimmer) RampTime() float64 {
+	return c.rampTime.Value().(float64)
+}
+
+// SetOnTime sets the on time of the dimmer.
+func (c *Dimmer) SetOnTime(value float64) {
+	c.onTime.InternalSetValue(value)
+}
+
+// OnTime returns the on time of the dimmer.
+func (c *Dimmer) OnTime() float64 {
+	return c.onTime.Value().(float64)
+}
+
+// SetWorking sets working state of the dimmer.
+func (c *Dimmer) SetWorking(value bool) {
+	c.working.InternalSetValue(value)
+}
+
+// Working returns the working state of the dimmer.
+func (c *Dimmer) Working() bool {
+	return c.working.Value().(bool)
+}

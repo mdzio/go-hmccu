@@ -73,7 +73,7 @@ func NewBoolParameter(id string) *BoolParameter {
 }
 
 // SetValue implements interface GenericParameter. This accessor is for external
-// systems.
+// systems. The associated channel must be locked.
 func (p *BoolParameter) SetValue(value interface{}) error {
 	if p.description.Operations&itf.ParameterOperationWrite == 0 {
 		return fmt.Errorf("Parameter not writeable: %s.%s", p.parentDescr.Address, p.description.ID)
@@ -89,19 +89,22 @@ func (p *BoolParameter) SetValue(value interface{}) error {
 	return nil
 }
 
-// InternalSetValue implements ValueAccessor.
+// InternalSetValue implements ValueAccessor. The associated channel must be
+// locked.
 func (p *BoolParameter) InternalSetValue(value interface{}) error {
 	bvalue, ok := value.(bool)
 	if !ok {
 		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
 	}
-	p.publishValue(bvalue)
+	if p.description.Operations&itf.ParameterOperationEvent != 0 {
+		p.publishValue(bvalue)
+	}
 	p.value = bvalue
 	return nil
 }
 
 // Value implements interface GenericParameter.  This accessor is for external
-// systems.
+// systems. The associated channel must be locked.
 func (p *BoolParameter) Value() interface{} {
 	return p.value
 }
@@ -171,7 +174,7 @@ func (p *IntParameter) toInt(value interface{}) (int, error) {
 }
 
 // SetValue implements interface GenericParameter. This accessor is for external
-// systems.
+// systems. The associated channel must be locked.
 func (p *IntParameter) SetValue(value interface{}) error {
 	if p.description.Operations&itf.ParameterOperationWrite == 0 {
 		return fmt.Errorf("Parameter not writeable: %s.%s", p.parentDescr.Address, p.description.ID)
@@ -187,19 +190,22 @@ func (p *IntParameter) SetValue(value interface{}) error {
 	return nil
 }
 
-// InternalSetValue implements ValueAccessor.
+// InternalSetValue implements ValueAccessor. The associated channel must be
+// locked.
 func (p *IntParameter) InternalSetValue(value interface{}) error {
 	ivalue, err := p.toInt(value)
 	if err != nil {
 		return err
 	}
-	p.publishValue(ivalue)
+	if p.description.Operations&itf.ParameterOperationEvent != 0 {
+		p.publishValue(ivalue)
+	}
 	p.value = ivalue
 	return nil
 }
 
 // Value implements interface GenericParameter.  This accessor is for external
-// systems.
+// systems. The associated channel must be locked.
 func (p *IntParameter) Value() interface{} {
 	return p.value
 }
@@ -240,7 +246,7 @@ func NewFloatParameter(id string) *FloatParameter {
 }
 
 // SetValue implements interface GenericParameter. This accessor is for external
-// systems.
+// systems. The associated channel must be locked.
 func (p *FloatParameter) SetValue(value interface{}) error {
 	if p.description.Operations&itf.ParameterOperationWrite == 0 {
 		return fmt.Errorf("Parameter not writeable: %s.%s", p.parentDescr.Address, p.description.ID)
@@ -256,19 +262,22 @@ func (p *FloatParameter) SetValue(value interface{}) error {
 	return nil
 }
 
-// InternalSetValue implements ValueAccessor.
+// InternalSetValue implements ValueAccessor. The associated channel must be
+// locked.
 func (p *FloatParameter) InternalSetValue(value interface{}) error {
 	fvalue, ok := value.(float64)
 	if !ok {
 		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
 	}
-	p.publishValue(fvalue)
+	if p.description.Operations&itf.ParameterOperationEvent != 0 {
+		p.publishValue(fvalue)
+	}
 	p.value = fvalue
 	return nil
 }
 
 // Value implements interface GenericParameter.  This accessor is for external
-// systems.
+// systems. The associated channel must be locked.
 func (p *FloatParameter) Value() interface{} {
 	return p.value
 }
@@ -309,7 +318,7 @@ func NewStringParameter(id string) *StringParameter {
 }
 
 // SetValue implements interface GenericParameter. This accessor is for external
-// systems.
+// systems. The associated channel must be locked.
 func (p *StringParameter) SetValue(value interface{}) error {
 	if p.description.Operations&itf.ParameterOperationWrite == 0 {
 		return fmt.Errorf("Parameter not writeable: %s.%s", p.parentDescr.Address, p.description.ID)
@@ -325,19 +334,22 @@ func (p *StringParameter) SetValue(value interface{}) error {
 	return nil
 }
 
-// InternalSetValue implements ValueAccessor.
+// InternalSetValue implements ValueAccessor. The associated channel must be
+// locked.
 func (p *StringParameter) InternalSetValue(value interface{}) error {
 	svalue, ok := value.(string)
 	if !ok {
 		return fmt.Errorf("Invalid data type for parameter %s.%s: %T", p.parentDescr.Address, p.description.ID, value)
 	}
-	p.publishValue(svalue)
+	if p.description.Operations&itf.ParameterOperationEvent != 0 {
+		p.publishValue(svalue)
+	}
 	p.value = svalue
 	return nil
 }
 
 // Value implements interface GenericParameter.  This accessor is for external
-// systems.
+// systems. The associated channel must be locked.
 func (p *StringParameter) Value() interface{} {
 	return p.value
 }
