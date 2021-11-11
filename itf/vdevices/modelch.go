@@ -259,8 +259,8 @@ func (c *AnalogInputChannel) VoltageStatus() int {
 	return c.voltageStatus.Value().(int)
 }
 
-// Dimmer implements a HM dimmer channel (e.g. HM-LC-Dim1TPBU-FM:1).
-type Dimmer struct {
+// DimmerChannel implements a HM dimmer channel (e.g. HM-LC-Dim1TPBU-FM:1).
+type DimmerChannel struct {
 	Channel
 
 	// These callbacks are executed when an external system wants to change the
@@ -278,8 +278,8 @@ type Dimmer struct {
 }
 
 // NewDimmerChannel creates a new HM dimmer channel and adds it to the device.
-func NewDimmerChannel(device *Device) *Dimmer {
-	c := new(Dimmer)
+func NewDimmerChannel(device *Device) *DimmerChannel {
+	c := new(DimmerChannel)
 	c.Channel.Init("DIMMER")
 	// adding channel to device also initializes some fields
 	device.AddChannel(&c.Channel)
@@ -368,41 +368,41 @@ func NewDimmerChannel(device *Device) *Dimmer {
 }
 
 // SetLevel sets the level of the dimmer.
-func (c *Dimmer) SetLevel(value float64) {
+func (c *DimmerChannel) SetLevel(value float64) {
 	c.level.InternalSetValue(value)
 }
 
 // Level returns the level of the dimmer.
-func (c *Dimmer) Level() float64 {
+func (c *DimmerChannel) Level() float64 {
 	return c.level.Value().(float64)
 }
 
 // SetRampTime sets the ramp time of the dimmer.
-func (c *Dimmer) SetRampTime(value float64) {
+func (c *DimmerChannel) SetRampTime(value float64) {
 	c.rampTime.InternalSetValue(value)
 }
 
 // RampTime returns the ramp time of the dimmer.
-func (c *Dimmer) RampTime() float64 {
+func (c *DimmerChannel) RampTime() float64 {
 	return c.rampTime.Value().(float64)
 }
 
 // SetOnTime sets the on time of the dimmer.
-func (c *Dimmer) SetOnTime(value float64) {
+func (c *DimmerChannel) SetOnTime(value float64) {
 	c.onTime.InternalSetValue(value)
 }
 
 // OnTime returns the on time of the dimmer.
-func (c *Dimmer) OnTime() float64 {
+func (c *DimmerChannel) OnTime() float64 {
 	return c.onTime.Value().(float64)
 }
 
 // SetWorking sets working state of the dimmer.
-func (c *Dimmer) SetWorking(value bool) {
+func (c *DimmerChannel) SetWorking(value bool) {
 	c.working.InternalSetValue(value)
 }
 
 // Working returns the working state of the dimmer.
-func (c *Dimmer) Working() bool {
+func (c *DimmerChannel) Working() bool {
 	return c.working.Value().(bool)
 }
