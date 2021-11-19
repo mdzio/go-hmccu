@@ -152,9 +152,14 @@ func (c *Channel) SetPublisher(pub EventPublisher) {
 	c.publisher = pub
 }
 
-// AddMasterParam adds a parameter to the MASTER paramset.
+// AddMasterParam adds a parameter to the MASTER paramset. OperationEvent is
+// cleared. TabOrder is auto generated.
 func (c *Channel) AddMasterParam(parameter GenericParameter) {
 	parameter.SetParentDescr(c.description)
+	// do not set a publisher, clear event operation
+	parameter.Description().Operations = parameter.Description().Operations & ^itf.ParameterOperationEvent
+	// auto generate tab order
+	parameter.Description().TabOrder = c.masterParamset.Len()
 	c.masterParamset.Add(parameter)
 }
 
@@ -202,6 +207,11 @@ func (s *Paramset) Parameter(id string) (GenericParameter, error) {
 		return nil, fmt.Errorf("Unknown parameter: %s", id)
 	}
 	return p, nil
+}
+
+// Len implements interface GenericParamset.
+func (s *Paramset) Len() int {
+	return len(s.params)
 }
 
 // NotifyPutParamset implements interface GenericParamset.

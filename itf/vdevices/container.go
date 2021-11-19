@@ -45,6 +45,7 @@ type GenericChannel interface {
 type GenericParamset interface {
 	Parameters() []GenericParameter
 	Parameter(id string) (GenericParameter, error)
+	Len() int
 
 	// NotifyPutParamset is called after executing the RPC method putParamset.
 	// The corresponding device or channel is locked while executed.
