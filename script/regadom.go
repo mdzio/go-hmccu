@@ -29,6 +29,7 @@ type ReGaDOM struct {
 	timer       *time.Timer
 	stopRequest chan struct{}
 	stopped     chan struct{}
+	refresh     chan struct{}
 }
 
 // NewReGaDOM creates a new ReGaDOM.
@@ -37,6 +38,7 @@ func NewReGaDOM(scriptClient *Client) *ReGaDOM {
 		ScriptClient: scriptClient,
 		stopRequest:  make(chan struct{}),
 		stopped:      make(chan struct{}),
+		refresh:      make(chan struct{}, 1),
 	}
 	r.model.Store(model{})
 	return r
@@ -69,6 +71,8 @@ func (rd *ReGaDOM) Start() {
 				return
 			case <-rd.timer.C:
 				// loop
+			case <-rd.refresh:
+				// loop
 			}
 		}
 	}()
@@ -79,6 +83,14 @@ func (rd *ReGaDOM) Stop() {
 	// stop exploration of ReGa DOM
 	rd.stopRequest <- struct{}{}
 	<-rd.stopped
+}
+
+// Refresh triggers a reexploration of the ReGa DOM.
+func (rd *ReGaDOM) Refresh() {
+	select {
+	case rd.refresh <- struct{}{}:
+	default:
+	}
 }
 
 func (rd *ReGaDOM) delay() bool {
