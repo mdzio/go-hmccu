@@ -211,23 +211,10 @@ func NewAnalogInputChannel(device *Device) *AnalogInputChannel {
 	c.voltageStatus = NewIntParameter("VOLTAGE_STATUS")
 	c.voltageStatus.description.Type = itf.ParameterTypeEnum
 	c.voltageStatus.description.Control = "ANALOG_INPUT.VOLTAGE_STATUS"
-
-	// Following values are reported by an analog input of a HmIP-MIO16-PCB:1.
-	// c.voltageStatus.description.Default = "NORMAL"
-	// c.voltageStatus.description.Max = "OVERFLOW"
-	// c.voltageStatus.description.Min = "NORMAL"
-	// c.voltageStatus.description.ValueList = []string{"NORMAL", "UNKNOWN", "OVERFLOW"}
-	// Even when using these values, the VOLTAGE_STATUS is not displayed in the
-	// Web-UI of the CCU, e.g. as a program trigger, as it is for a real device.
-	// Maybe someone can explain. With the following settings at least all
-	// possible values of the ENUM are displayed, although the value 1 is
-	// normally hidden.
-
-	c.voltageStatus.description.Default = 0
-	c.voltageStatus.description.Max = 3
-	c.voltageStatus.description.Min = 0
-	c.voltageStatus.description.ValueList = []string{"NORMAL", "UNKNOWN", "OVERFLOW", "UNDERFLOW"}
-
+	c.voltageStatus.description.Default = "NORMAL"
+	c.voltageStatus.description.Min = "NORMAL"
+	c.voltageStatus.description.Max = "OVERFLOW"
+	c.voltageStatus.description.ValueList = []string{"NORMAL", "UNKNOWN", "OVERFLOW"}
 	c.voltageStatus.OnSetValue = func(value int) bool {
 		if c.OnSetVoltage != nil {
 			return c.OnSetVoltageStatus(value)
@@ -405,4 +392,132 @@ func (c *DimmerChannel) SetWorking(value bool) {
 // Working returns the working state of the dimmer.
 func (c *DimmerChannel) Working() bool {
 	return c.working.Value().(bool)
+}
+
+// TemperatureChannel implements a HM temperature channel (e.g. HmIP-STHO:1).
+type TemperatureChannel struct {
+	Channel
+
+	// These callbacks are executed when an external system wants to change the
+	// values. Only if the function returns true, the value is actually set.
+	OnSetTemperature       func(value float64) (ok bool)
+	OnSetTemperatureStatus func(value int) (ok bool)
+	OnSetHumidity          func(value int) (ok bool)
+	OnSetHumidityStatus    func(value int) (ok bool)
+
+	temperature       *FloatParameter
+	temperatureStatus *IntParameter
+	humidity          *IntParameter
+	humidityStatus    *IntParameter
+}
+
+// NewTemperatureChannel creates a new HM temperature channel and adds it to the device.
+func NewTemperatureChannel(device *Device) *TemperatureChannel {
+	c := new(TemperatureChannel)
+	c.Channel.Init("CLIMATE_TRANSCEIVER")
+	// adding channel to device also initializes some fields
+	device.AddChannel(&c.Channel)
+	addInstallTest(&c.Channel)
+
+	// add ACTUAL_TEMPERATURE parameter
+	c.temperature = NewFloatParameter("ACTUAL_TEMPERATURE")
+	c.temperature.description.Max = 3276.7
+	c.temperature.description.Min = -3276.8
+	c.temperature.description.Unit = "°C"
+	c.temperature.OnSetValue = func(value float64) bool {
+		if c.OnSetTemperature != nil {
+			return c.OnSetTemperature(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.temperature)
+
+	// add ACTUAL_TEMPERATURE_STATUS parameter
+	c.temperatureStatus = NewIntParameter("ACTUAL_TEMPERATURE_STATUS")
+	c.temperatureStatus.description.Type = itf.ParameterTypeEnum
+	c.temperatureStatus.description.Default = "NORMAL"
+	c.temperatureStatus.description.Max = "UNDERFLOW"
+	c.temperatureStatus.description.Min = "NORMAL"
+	c.temperatureStatus.description.ValueList = []string{"NORMAL", "UNKNOWN", "OVERFLOW", "UNDERFLOW"}
+	c.temperatureStatus.OnSetValue = func(value int) bool {
+		if c.OnSetTemperatureStatus != nil {
+			return c.OnSetTemperatureStatus(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.temperatureStatus)
+
+	// add HUMIDITY parameter
+	c.humidity = NewIntParameter("HUMIDITY")
+	c.humidity.description.Max = 100
+	c.humidity.description.Min = 0
+	c.humidity.description.Unit = "%"
+	c.humidity.OnSetValue = func(value int) bool {
+		if c.OnSetHumidity != nil {
+			return c.OnSetHumidity(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.humidity)
+
+	// add HUMIDITY_STATUS parameter
+	c.humidityStatus = NewIntParameter("HUMIDITY_STATUS")
+	c.humidityStatus.description.Type = itf.ParameterTypeEnum
+	c.humidityStatus.description.Default = "NORMAL"
+	c.humidityStatus.description.Max = "UNDERFLOW"
+	c.humidityStatus.description.Min = "NORMAL"
+	c.humidityStatus.description.ValueList = []string{"NORMAL", "UNKNOWN", "OVERFLOW", "UNDERFLOW"}
+	c.humidityStatus.OnSetValue = func(value int) bool {
+		if c.OnSetHumidityStatus != nil {
+			return c.OnSetHumidityStatus(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.humidityStatus)
+
+	return c
+}
+
+// SetTemperature sets the temperature of the sensor.
+func (c *TemperatureChannel) SetTemperature(value float64) {
+	c.temperature.InternalSetValue(value)
+}
+
+// Temperature returns the temperature of the sensor.
+func (c *TemperatureChannel) Temperature() float64 {
+	return c.temperature.Value().(float64)
+}
+
+// SetTemperatureStatus sets the temperature status of the sensor.
+func (c *TemperatureChannel) SetTemperatureStatus(value int) {
+	c.temperatureStatus.InternalSetValue(value)
+}
+
+// TemperatureStatus returns the temperature status of the sensor.
+func (c *TemperatureChannel) TemperatureStatus() int {
+	return c.temperatureStatus.Value().(int)
+}
+
+// SetHumidity sets the humidity of the sensor.
+func (c *TemperatureChannel) SetHumidity(value int) {
+	c.humidity.InternalSetValue(value)
+}
+
+// Humidity returns the humidity of the sensor.
+func (c *TemperatureChannel) Humidity() int {
+	return c.humidity.Value().(int)
+}
+
+// SetHumidityStatus sets the temperature status of the sensor.
+func (c *TemperatureChannel) SetHumidityStatus(value int) {
+	c.humidityStatus.InternalSetValue(value)
+}
+
+// HumidityStatus returns the humidity status of the sensor.
+func (c *TemperatureChannel) HumidityStatus() int {
+	return c.humidityStatus.Value().(int)
 }
