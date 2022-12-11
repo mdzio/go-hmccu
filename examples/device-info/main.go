@@ -1,6 +1,24 @@
 /*
 This example shows how to read all information about a CCU device. The output is
 valid Go code, which can be used for defining virtual devices.
+
+Usage of device-info:
+	-ccu address
+			address of the CCU (default "127.0.0.1")
+	-device address
+			address (serial no.) of a CCU device/channel (default "BidCoS-RF:1")
+	-list
+			list all devices
+	-log severity
+			specifies the minimum severity of printed log messages: off, error, warning, info, debug or trace (default INFO)
+	-port number
+			port number of the CCU interface process: e.g. 2000 (BidCos-Wired), 2001 (BidCos-RF), 2010 (HmIP-RF), 8701 (CUxD), 2121 (CCU-Jack) (default 2001)
+
+Prerequisites:
+    Authentication of the XML-RPC interface must be switched off in the CCU's system control.
+
+Build command:
+	go build -trimpath "-ldflags=-s -w" .
 */
 package main
 
