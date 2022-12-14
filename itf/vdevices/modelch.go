@@ -521,3 +521,169 @@ func (c *TemperatureChannel) SetHumidityStatus(value int) {
 func (c *TemperatureChannel) HumidityStatus() int {
 	return c.humidityStatus.Value().(int)
 }
+
+// PowerMeterChannel implements a HM power meter channel (e.g. HM-ES-PMSw1-Pl:1).
+type PowerMeterChannel struct {
+	Channel
+
+	// These callbacks are executed when an external system wants to change the
+	// values. Only if the function returns true, the value is actually set.
+	OnSetEnergyCounter func(value float64) (ok bool)
+	OnSetPower         func(value float64) (ok bool)
+	OnSetCurrent       func(value float64) (ok bool)
+	OnSetVoltage       func(value float64) (ok bool)
+	OnSetFrequency     func(value float64) (ok bool)
+
+	energyCounter *FloatParameter
+	power         *FloatParameter
+	current       *FloatParameter
+	voltage       *FloatParameter
+	frequency     *FloatParameter
+}
+
+// NewPowerMeterChannel creates a new HM power meter channel and adds it to the device.
+func NewPowerMeterChannel(device *Device) *PowerMeterChannel {
+	c := new(PowerMeterChannel)
+	c.Channel.Init("POWERMETER")
+	// adding channel to device also initializes some fields
+	device.AddChannel(&c.Channel)
+	addInstallTest(&c.Channel)
+
+	// add ENERGY_COUNTER parameter
+	c.energyCounter = NewFloatParameter("ENERGY_COUNTER")
+	c.energyCounter.description.Max = 838860.7
+	c.energyCounter.description.Min = 0.0
+	c.energyCounter.description.Unit = "Wh"
+	c.energyCounter.description.Control = "POWERMETER.ENERGY_COUNTER"
+	c.energyCounter.description.TabOrder = 0
+	c.energyCounter.OnSetValue = func(value float64) bool {
+		if c.OnSetEnergyCounter != nil {
+			return c.OnSetEnergyCounter(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.energyCounter)
+
+	// add POWER parameter
+	c.power = NewFloatParameter("POWER")
+	c.power.description.Max = 167772.15
+	c.power.description.Min = 0.0
+	c.power.description.Unit = "W"
+	c.power.description.Control = "POWERMETER.POWER"
+	c.power.description.TabOrder = 1
+	c.power.OnSetValue = func(value float64) bool {
+		if c.OnSetPower != nil {
+			return c.OnSetPower(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.power)
+
+	// add CURRENT parameter
+	c.current = NewFloatParameter("CURRENT")
+	c.current.description.Max = 65535.0
+	c.current.description.Min = 0.0
+	c.current.description.Unit = "mA"
+	c.current.description.Control = "POWERMETER.CURRENT"
+	c.current.description.TabOrder = 2
+	c.current.OnSetValue = func(value float64) bool {
+		if c.OnSetCurrent != nil {
+			return c.OnSetCurrent(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.current)
+
+	// add VOLTAGE parameter
+	c.voltage = NewFloatParameter("VOLTAGE")
+	c.voltage.description.Max = 6553.5
+	c.voltage.description.Min = 0.0
+	c.voltage.description.Unit = "V"
+	c.voltage.description.Control = "POWERMETER.VOLTAGE"
+	c.voltage.description.TabOrder = 3
+	c.voltage.OnSetValue = func(value float64) bool {
+		if c.OnSetVoltage != nil {
+			return c.OnSetVoltage(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.voltage)
+
+	// add FREQUENCY parameter
+	c.frequency = NewFloatParameter("FREQUENCY")
+	c.frequency.description.Max = 51.27
+	c.frequency.description.Min = 48.72
+	c.frequency.description.Unit = "Hz"
+	c.frequency.description.Control = "POWERMETER.FREQUENCY"
+	c.frequency.description.TabOrder = 4
+	c.frequency.OnSetValue = func(value float64) bool {
+		if c.OnSetFrequency != nil {
+			return c.OnSetFrequency(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.frequency)
+
+	// Add bool parameter with the fixed value true. This is needed so that
+	// meter overflows are better handled by the CCU total energy meter.
+	boot := NewBoolParameter("BOOT")
+	boot.description.Control = "POWERMETER.BOOT"
+	// not writeable
+	boot.description.Operations = itf.ParameterOperationRead | itf.ParameterOperationEvent
+	// internal
+	boot.description.Flags = itf.ParameterFlagVisible | itf.ParameterFlagInternal
+	boot.description.TabOrder = 5
+	// fixed value true
+	boot.InternalSetValue(true)
+	boot.OnSetValue = func(value bool) bool {
+		return false
+	}
+	c.AddValueParam(boot)
+
+	return c
+}
+
+func (c *PowerMeterChannel) SetEnergyCounter(value float64) {
+	c.energyCounter.InternalSetValue(value)
+}
+
+func (c *PowerMeterChannel) EnergyCounter() float64 {
+	return c.energyCounter.Value().(float64)
+}
+
+func (c *PowerMeterChannel) SetPower(value float64) {
+	c.power.InternalSetValue(value)
+}
+
+func (c *PowerMeterChannel) Power() float64 {
+	return c.power.Value().(float64)
+}
+
+func (c *PowerMeterChannel) SetCurrent(value float64) {
+	c.current.InternalSetValue(value)
+}
+
+func (c *PowerMeterChannel) Current() float64 {
+	return c.current.Value().(float64)
+}
+
+func (c *PowerMeterChannel) SetVoltage(value float64) {
+	c.voltage.InternalSetValue(value)
+}
+
+func (c *PowerMeterChannel) Voltage() float64 {
+	return c.voltage.Value().(float64)
+}
+
+func (c *PowerMeterChannel) SetFrequency(value float64) {
+	c.frequency.InternalSetValue(value)
+}
+
+func (c *PowerMeterChannel) Frequency() float64 {
+	return c.frequency.Value().(float64)
+}

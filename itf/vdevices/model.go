@@ -49,9 +49,7 @@ func (d *Device) Description() *itf.DeviceDescription {
 // Channels implements interface GenericDevice.
 func (d *Device) Channels() []GenericChannel {
 	gc := make([]GenericChannel, len(d.channels))
-	for idx := range d.channels {
-		gc[idx] = d.channels[idx]
-	}
+	copy(gc, d.channels)
 	return gc
 }
 
