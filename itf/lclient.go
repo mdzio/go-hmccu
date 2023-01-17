@@ -65,7 +65,7 @@ func (c *LogicLayerClient) Event(interfaceID, address, valueKey string, value in
 		return err
 	}
 	// assert empty response
-	err = c.assertEmptyResponse(resp)
+	err = assertEmptyResponse(resp)
 	if err != nil {
 		return fmt.Errorf("Invalid response for method event: %v", err)
 	}
@@ -95,7 +95,7 @@ func (c *LogicLayerClient) NewDevices(interfaceID string, devDescriptions []*Dev
 		return err
 	}
 	// assert empty response
-	err = c.assertEmptyResponse(resp)
+	err = assertEmptyResponse(resp)
 	if err != nil {
 		return fmt.Errorf("Invalid response for method newDevices: %v", err)
 	}
@@ -114,18 +114,29 @@ func (c *LogicLayerClient) DeleteDevices(interfaceID string, addresses []string)
 		return err
 	}
 	// assert empty response
-	err = c.assertEmptyResponse(resp)
+	err = assertEmptyResponse(resp)
 	if err != nil {
 		return fmt.Errorf("Invalid response for method deleteDevices: %v", err)
 	}
 	return nil
 }
 
-func (c *LogicLayerClient) assertEmptyResponse(v *xmlrpc.Value) error {
-	eval := xmlrpc.Q(v)
-	s := eval.String()
-	if eval.Err() != nil || s != "" {
-		return errors.New("Expected emtpy string as response")
+func assertEmptyResponse(v *xmlrpc.Value) error {
+	// empty array?
+	if v.Array != nil {
+		if len(v.Array.Data) != 0 {
+			return errors.New("Array not empty")
+		}
+		return nil
+	}
+	// other types?
+	if v.Boolean != "" || v.I4 != "" || v.Int != "" || v.Double != "" ||
+		v.Base64 != "" || v.DateTime != "" || v.Struct != nil {
+		return errors.New("Not a string or array")
+	}
+	// empty string?
+	if v.ElemString != "" || v.FlatString != "" {
+		return errors.New("String not empty")
 	}
 	return nil
 }
