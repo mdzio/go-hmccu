@@ -502,27 +502,40 @@ func (d *Dispatcher) AddDeviceLayer(dl DeviceLayer) {
 	// XML-RPC: Boolean reportValueUsage(String address, String value_id,
 	// Integer ref_counter)
 	//
-	// Attention: This call is not forwarded.
+	// Attention: This call is not forwarded to DeviceLayer.
 	d.HandleFunc("reportValueUsage", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
-		// ignore arguments
+		svrLog.Debugf("Call of method reportValueUsage received, arguments: %s", args)
+		// not needed, not implemented
 		// return always true: action succeeded
 		return &xmlrpc.Value{Boolean: "1"}, nil
 	})
 
 	// XML-RPC: Array<Struct>getLinks(String address, Integer flags)
 	//
-	// Attention: This call is not forwarded.
+	// Attention: This call is not forwarded to DeviceLayer.
 	d.HandleFunc("getLinks", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
-		// ignore arguments
+		svrLog.Debugf("Call of method getLinks received, arguments: %s", args)
+		// not needed, not implemented
 		// return always an empty array
 		return &xmlrpc.Value{Array: &xmlrpc.Array{}}, nil
 	})
 
 	// XML-RPC: String getParamsetId(String address, String type)
 	//
-	// Attention: This call is not forwarded.
+	// Attention: This call is not forwarded to DeviceLayer.
 	d.HandleFunc("getParamsetId", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
-		// ignore arguments
+		svrLog.Debugf("Call of method getParamsetId received, arguments: %s", args)
+		// not needed, not implemented
+		// return always an empty string
+		return &xmlrpc.Value{}, nil
+	})
+
+	// XML-RPC: ? firmwareUpdateStatusChanged(?)
+	//
+	// Attention: This call is not forwarded to DeviceLayer.
+	d.HandleFunc("firmwareUpdateStatusChanged", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
+		svrLog.Debugf("Call of method firmwareUpdateStatusChanged received, arguments: %s", args)
+		// not needed, not implemented
 		// return always an empty string
 		return &xmlrpc.Value{}, nil
 	})
