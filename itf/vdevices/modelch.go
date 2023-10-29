@@ -541,7 +541,8 @@ type PowerMeterChannel struct {
 	frequency     *FloatParameter
 }
 
-// NewPowerMeterChannel creates a new HM power meter channel and adds it to the device.
+// NewPowerMeterChannel creates a new HM power meter channel and adds it to the
+// device.
 func NewPowerMeterChannel(device *Device) *PowerMeterChannel {
 	c := new(PowerMeterChannel)
 	c.Channel.Init("POWERMETER")
@@ -686,4 +687,221 @@ func (c *PowerMeterChannel) SetFrequency(value float64) {
 
 func (c *PowerMeterChannel) Frequency() float64 {
 	return c.frequency.Value().(float64)
+}
+
+// EnergyCounterChannel implements a HM energy meter channel (e.g.
+// HM-ES-TX-WM:1) of type POWERMETER_IEC1.
+type EnergyCounterChannel struct {
+	Channel
+
+	// These callbacks are executed when an external system wants to change the
+	// values. Only if the function returns true, the value is actually set.
+	OnSetEnergyCounter func(value float64) (ok bool)
+	OnSetPower         func(value float64) (ok bool)
+
+	energyCounter *FloatParameter
+	power         *FloatParameter
+}
+
+// NewEnergyCounterChannel creates a new HM energy meter channel and adds it to
+// the device.
+func NewEnergyCounterChannel(device *Device) *EnergyCounterChannel {
+	c := new(EnergyCounterChannel)
+	c.Channel.Init("POWERMETER_IEC1")
+	// adding channel to device also initializes some fields
+	device.AddChannel(&c.Channel)
+	addInstallTest(&c.Channel)
+
+	// add ENERGY_COUNTER parameter
+	c.energyCounter = NewFloatParameter("IEC_ENERGY_COUNTER")
+	//  The associated CCU energy meter, an automatically created script, uses
+	//  Max to calculate overruns.
+	c.energyCounter.description.Max = 1000000.0
+	c.energyCounter.description.Min = 0.0
+	c.energyCounter.description.Unit = "kWh"
+	c.energyCounter.description.Control = "POWERMETER_IEC1.IEC_ENERGY_COUNTER"
+	c.energyCounter.description.TabOrder = 0
+	c.energyCounter.OnSetValue = func(value float64) bool {
+		if c.OnSetEnergyCounter != nil {
+			return c.OnSetEnergyCounter(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.energyCounter)
+
+	// add POWER parameter
+	c.power = NewFloatParameter("IEC_POWER")
+	c.power.description.Unit = "W"
+	c.power.description.Control = "POWERMETER_IEC1.IEC_POWER"
+	c.power.description.TabOrder = 1
+	c.power.OnSetValue = func(value float64) bool {
+		if c.OnSetPower != nil {
+			return c.OnSetPower(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.power)
+	return c
+}
+
+func (c *EnergyCounterChannel) SetEnergyCounter(value float64) {
+	c.energyCounter.InternalSetValue(value)
+}
+
+func (c *EnergyCounterChannel) EnergyCounter() float64 {
+	return c.energyCounter.Value().(float64)
+}
+
+func (c *EnergyCounterChannel) SetPower(value float64) {
+	c.power.InternalSetValue(value)
+}
+
+func (c *EnergyCounterChannel) Power() float64 {
+	return c.power.Value().(float64)
+}
+
+// GasCounterChannel implements a HM gas meter channel (e.g. HM-ES-TX-WM:1) of
+// type POWERMETER_IEC1.
+type GasCounterChannel struct {
+	Channel
+
+	// These callbacks are executed when an external system wants to change the
+	// values. Only if the function returns true, the value is actually set.
+	OnSetEnergyCounter func(value float64) (ok bool)
+	OnSetPower         func(value float64) (ok bool)
+
+	energyCounter *FloatParameter
+	power         *FloatParameter
+}
+
+// NewGasCounterChannel creates a new HM gas meter channel and adds it to the
+// device.
+func NewGasCounterChannel(device *Device) *GasCounterChannel {
+	c := new(GasCounterChannel)
+	c.Channel.Init("POWERMETER_IEC1")
+	// adding channel to device also initializes some fields
+	device.AddChannel(&c.Channel)
+	addInstallTest(&c.Channel)
+
+	// add GAS_ENERGY_COUNTER parameter
+	c.energyCounter = NewFloatParameter("GAS_ENERGY_COUNTER")
+	//  The associated CCU energy meter, an automatically created script, uses
+	//  Max to calculate overruns.
+	c.energyCounter.Description().Max = 1000000.0
+	c.energyCounter.Description().Min = 0.0
+	c.energyCounter.Description().Unit = "m3"
+	c.energyCounter.Description().Control = "POWERMETER_IEC1.GAS_ENERGY_COUNTER"
+	c.energyCounter.Description().TabOrder = 0
+	c.energyCounter.OnSetValue = func(value float64) bool {
+		if c.OnSetEnergyCounter != nil {
+			return c.OnSetEnergyCounter(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.energyCounter)
+
+	// add GAS_POWER parameter
+	c.power = NewFloatParameter("GAS_POWER")
+	c.power.Description().Unit = "m3"
+	c.power.Description().Control = "POWERMETER_IEC1.GAS_POWER"
+	c.power.Description().TabOrder = 1
+	c.power.OnSetValue = func(value float64) bool {
+		if c.OnSetPower != nil {
+			return c.OnSetPower(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.power)
+
+	// The following parameters are only required for a correct view of the
+	// device in the web UI and the CCU scripts for the counter overflows.
+
+	// add MASTER parameter METER_TYPE with fixed value 0
+	meterType := NewIntParameter("METER_TYPE")
+	meterType.Description().Type = itf.ParameterTypeEnum
+	meterType.Description().ValueList = []string{"GAS-SENSOR", "IR-SENSOR", "LED-SENSOR", "IEC-SENSOR", "UNKOWN"}
+	meterType.Description().Min = 0
+	meterType.Description().Max = len(meterType.Description().ValueList) - 1
+	meterType.Description().Default = 0
+	// not writeable
+	meterType.Description().Operations = itf.ParameterOperationRead
+	// not visible, internal
+	meterType.Description().Flags = itf.ParameterFlagInternal
+	// fixed value "GAS-SENSOR"
+	meterType.value = 0
+	c.AddMasterParam(meterType)
+
+	// add ENERGY_COUNTER parameter
+	fakeEnergyCounter := NewFloatParameter("ENERGY_COUNTER")
+	fakeEnergyCounter.Description().Max = 1000000.0
+	fakeEnergyCounter.Description().Min = 0.0
+	fakeEnergyCounter.Description().Unit = "Wh"
+	fakeEnergyCounter.Description().Control = "POWERMETER_IEC1.ENERGY_COUNTER"
+	fakeEnergyCounter.Description().TabOrder = 2
+	// not writeable
+	fakeEnergyCounter.Description().Operations = itf.ParameterOperationRead | itf.ParameterOperationEvent
+	c.AddValueParam(fakeEnergyCounter)
+
+	// add POWER parameter
+	fakePower := NewFloatParameter("POWER")
+	fakePower.Description().Unit = "W"
+	fakePower.Description().Control = "POWERMETER_IEC1.POWER"
+	fakePower.Description().TabOrder = 3
+	// not writeable
+	fakePower.Description().Operations = itf.ParameterOperationRead | itf.ParameterOperationEvent
+	c.AddValueParam(fakePower)
+
+	// add IEC_ENERGY_COUNTER parameter
+	fakeIECEnergyCounter := NewFloatParameter("IEC_ENERGY_COUNTER")
+	fakeIECEnergyCounter.Description().Max = 1000000.0
+	fakeIECEnergyCounter.Description().Min = 0.0
+	fakeIECEnergyCounter.Description().Unit = "kWh"
+	fakeIECEnergyCounter.Description().Control = "POWERMETER_IEC1.IEC_ENERGY_COUNTER"
+	fakeIECEnergyCounter.Description().TabOrder = 4
+	// not writeable
+	fakeIECEnergyCounter.Description().Operations = itf.ParameterOperationRead | itf.ParameterOperationEvent
+	c.AddValueParam(fakeIECEnergyCounter)
+
+	// add IEC_POWER parameter
+	fakeIECPower := NewFloatParameter("IEC_POWER")
+	fakeIECPower.Description().Unit = "W"
+	fakeIECPower.Description().Control = "POWERMETER_IEC1.IEC_POWER"
+	fakeIECPower.Description().TabOrder = 5
+	// not writeable
+	fakeIECPower.Description().Operations = itf.ParameterOperationRead | itf.ParameterOperationEvent
+	c.AddValueParam(fakeIECPower)
+
+	// add BOOT parameter with the fixed value false
+	fakeBoot := NewBoolParameter("BOOT")
+	fakeBoot.Description().Control = "POWERMETER_IEC1.BOOT"
+	fakeBoot.Description().TabOrder = 6
+	// not writeable
+	fakeBoot.Description().Operations = itf.ParameterOperationRead | itf.ParameterOperationEvent
+	// internal
+	fakeBoot.Description().Flags = itf.ParameterFlagVisible | itf.ParameterFlagInternal
+	// fixed value false
+	fakeBoot.value = false
+	c.AddValueParam(fakeBoot)
+
+	return c
+}
+
+func (c *GasCounterChannel) SetEnergyCounter(value float64) {
+	c.energyCounter.InternalSetValue(value)
+}
+
+func (c *GasCounterChannel) EnergyCounter() float64 {
+	return c.energyCounter.Value().(float64)
+}
+
+func (c *GasCounterChannel) SetPower(value float64) {
+	c.power.InternalSetValue(value)
+}
+
+func (c *GasCounterChannel) Power() float64 {
+	return c.power.Value().(float64)
 }

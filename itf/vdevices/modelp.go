@@ -28,7 +28,6 @@ func (p *Parameter) Description() *itf.ParameterDescription {
 	return p.description
 }
 
-// Description implements interface GenericParameter.
 func (p *Parameter) publishValue(value interface{}) {
 	// updates of master params are not published
 	if pub := p.publisher; pub != nil {
@@ -184,7 +183,9 @@ func (p *IntParameter) SetValue(value interface{}) error {
 		return err
 	}
 	if p.OnSetValue == nil || p.OnSetValue(ivalue) {
-		p.publishValue(ivalue)
+		if p.description.Operations&itf.ParameterOperationEvent != 0 {
+			p.publishValue(ivalue)
+		}
 		p.value = ivalue
 	}
 	return nil
