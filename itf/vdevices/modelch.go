@@ -805,7 +805,7 @@ func NewGasCounterChannel(device *Device) *GasCounterChannel {
 
 	// add GAS_POWER parameter
 	c.power = NewFloatParameter("GAS_POWER")
-	c.power.Description().Unit = "m3"
+	c.power.Description().Unit = "m3/h"
 	c.power.Description().Control = "POWERMETER_IEC1.GAS_POWER"
 	c.power.Description().TabOrder = 1
 	c.power.OnSetValue = func(value float64) bool {
