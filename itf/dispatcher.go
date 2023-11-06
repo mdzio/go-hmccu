@@ -539,4 +539,14 @@ func (d *Dispatcher) AddDeviceLayer(dl DeviceLayer) {
 		// return always an empty string
 		return &xmlrpc.Value{}, nil
 	})
+
+	// XML-RPC: ? setReadyConfig(?)
+	//
+	// Attention: This call is not forwarded to DeviceLayer.
+	d.HandleFunc("setReadyConfig", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
+		svrLog.Debugf("Call of method setReadyConfig received, arguments: %s", args)
+		// not needed, not implemented
+		// return always an empty string
+		return &xmlrpc.Value{}, nil
+	})
 }
