@@ -3,7 +3,7 @@ package xmlrpc
 import (
 	"bytes"
 	"encoding/xml"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -34,7 +34,7 @@ func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		limit = requestSizeLimit
 	}
 	reqLimitReader := http.MaxBytesReader(resp, req.Body, limit)
-	reqBuf, err := ioutil.ReadAll(reqLimitReader)
+	reqBuf, err := io.ReadAll(reqLimitReader)
 	if err != nil {
 		svrLog.Errorf("Reading of request failed from %s: %v", req.RemoteAddr, err)
 		http.Error(resp, "Reading of request failed: "+err.Error(), http.StatusBadRequest)

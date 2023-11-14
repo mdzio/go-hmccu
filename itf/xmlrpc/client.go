@@ -5,7 +5,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/mdzio/go-logging"
@@ -80,7 +79,7 @@ func (c *Client) Call(method string, params Values) (*Value, error) {
 		limit = responseSizeLimit
 	}
 	limitReader := io.LimitReader(httpResp.Body, limit)
-	respBuf, err := ioutil.ReadAll(limitReader)
+	respBuf, err := io.ReadAll(limitReader)
 	if err != nil {
 		return nil, fmt.Errorf("Reading of response failed from %s: %v", c.Addr, err)
 	}
