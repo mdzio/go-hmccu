@@ -283,6 +283,16 @@ func (d *Dispatcher) AddLogicLayer(ll LogicLayer) {
 		}
 		return &xmlrpc.Value{}, nil
 	})
+
+	// XML-RPC: ? setReadyConfig(?)
+	//
+	// Attention: This call is not forwarded to LogicLayer.
+	d.HandleFunc("setReadyConfig", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
+		svrLog.Debugf("Call of method setReadyConfig received, arguments: %s", args)
+		// not needed, not implemented
+		// return always an empty string
+		return &xmlrpc.Value{}, nil
+	})
 }
 
 // AddDeviceLayer adds handlers for a device layer.
@@ -535,16 +545,6 @@ func (d *Dispatcher) AddDeviceLayer(dl DeviceLayer) {
 	// Attention: This call is not forwarded to DeviceLayer.
 	d.HandleFunc("firmwareUpdateStatusChanged", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
 		svrLog.Debugf("Call of method firmwareUpdateStatusChanged received, arguments: %s", args)
-		// not needed, not implemented
-		// return always an empty string
-		return &xmlrpc.Value{}, nil
-	})
-
-	// XML-RPC: ? setReadyConfig(?)
-	//
-	// Attention: This call is not forwarded to DeviceLayer.
-	d.HandleFunc("setReadyConfig", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
-		svrLog.Debugf("Call of method setReadyConfig received, arguments: %s", args)
 		// not needed, not implemented
 		// return always an empty string
 		return &xmlrpc.Value{}, nil
