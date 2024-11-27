@@ -182,6 +182,11 @@ func (q *Query) Err() error {
 	return *q.err
 }
 
+// SetErr sets an error.
+func (q *Query) SetErr(err error) {
+	*q.err = err
+}
+
 // Int gets an XML-RPC int or i4 value.
 func (q *Query) Int() (i int) {
 	// previous error or empty optional?

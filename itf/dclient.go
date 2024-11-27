@@ -161,11 +161,18 @@ func (c *DeviceLayerClient) PutParamset(deviceAddress string, paramsetType strin
 
 func (c *DeviceLayerClient) assertEmptyResponse(v *xmlrpc.Value) error {
 	eval := xmlrpc.Q(v)
+	// test for empty string
 	s := eval.String()
-	if eval.Err() != nil || s != "" {
-		return errors.New("Expected emtpy string as response")
+	if eval.Err() == nil && s == "" {
+		return nil
 	}
-	return nil
+	// test for empty array (workaround for interface HausBusDe)
+	eval.SetErr(nil)
+	ar := eval.Slice()
+	if eval.Err() == nil && len(ar) == 0 {
+		return nil
+	}
+	return errors.New("Expected emtpy string/array as response")
 }
 
 // SetValue sets a single value from the parameter set VALUES.

@@ -35,6 +35,8 @@ const (
 	VirtualDevices
 	// CUxD add on
 	CUxD
+	// Haus-Bus.de add on
+	HausBusDe
 )
 
 var (
@@ -45,8 +47,9 @@ var (
 		HmIPRF:         "HmIPRF",
 		VirtualDevices: "VirtualDevices",
 		CUxD:           "CUxD",
+		HausBusDe:      "HausBusDe",
 	}
-	errInvalidItfType = errors.New("Invalid interface type identifier (expected: BidCosWired, BidCosRF, System, HmIPRF, VirtualDevices, CUxD)")
+	errInvalidItfType = errors.New("Invalid interface type identifier (expected: BidCosWired, BidCosRF, System, HmIPRF, VirtualDevices, CUxD, HausBusDe)")
 	errMissingItfType = errors.New("At least one interface type must be specified")
 )
 
@@ -124,6 +127,7 @@ var (
 		HmIPRF:         {"HmIP-RF", "", 2010, false},
 		VirtualDevices: {"VirtualDevices", "/groups", 9292, false},
 		CUxD:           {"CUxD", "", 8701, true},
+		HausBusDe:      {"HausBusDe", "", 8766, false},
 	}
 )
 
