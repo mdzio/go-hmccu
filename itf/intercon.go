@@ -134,10 +134,11 @@ var (
 // Interconnector gives access to the CCU data model and current data point
 // values.
 type Interconnector struct {
-	CCUAddr  string
-	Types    Types
-	IDPrefix string
-	ServeErr chan<- error
+	CCUAddr          string
+	Types            Types
+	UseInternalPorts bool
+	IDPrefix         string
+	ServeErr         chan<- error
 	// for callbacks from CCU interface processes
 	HostAddr   string
 	ServerURL  string
@@ -179,7 +180,11 @@ func (i *Interconnector) Start() {
 	i.clients = make(map[string]*RegisteredClient)
 	for _, itfType := range i.Types {
 		cfg := configs[itfType]
-		addr := i.CCUAddr + ":" + strconv.Itoa(cfg.port) + cfg.path
+		port := cfg.port
+		if i.UseInternalPorts && (itfType == BidCosWired || itfType == BidCosRF || itfType == HmIPRF || itfType == VirtualDevices) {
+			port += 30000
+		}
+		addr := i.CCUAddr + ":" + strconv.Itoa(port) + cfg.path
 		iLog.Infof("Creating interface client for %s: %s", addr, cfg.reGaHssID)
 
 		// CUXD BIN-RPC or standard XML-RPC?
