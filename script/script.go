@@ -335,6 +335,9 @@ type Client struct {
 	// IP address or network name of the CCU
 	Addr string
 
+	// If access is local, the proxy server can be bypassed.
+	UseInternalPort bool
+
 	// Limits the size of a valid response
 	RespLimit int64
 }
@@ -349,7 +352,13 @@ func (sc *Client) Execute(script string) ([]string, error) {
 	reqWriter.Write([]byte(script))
 
 	// http post
-	addr := "http://" + sc.Addr + ":8181/tclrega.exe"
+	var port string
+	if sc.UseInternalPort {
+		port = "8183"
+	} else {
+		port = "8181"
+	}
+	addr := "http://" + sc.Addr + ":" + port + "/tclrega.exe"
 	httpResp, err := http.Post(addr, "", bytes.NewReader(reqBuf.Bytes()))
 	if err != nil {
 		return nil, fmt.Errorf("HTTP request failed on %s: %v", addr, err)
