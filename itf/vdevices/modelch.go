@@ -311,7 +311,7 @@ func NewDimmerChannel(device *Device) *DimmerChannel {
 	c.rampTime.description.TabOrder = 2
 	// set default value
 	c.rampTime.description.Default = 0.5
-	c.rampTime.value = 0.5
+	c.rampTime.value.Store(float64(0.5))
 	c.rampTime.description.Min = 0.0
 	c.rampTime.description.Max = 8.58259456e+07
 	c.rampTime.description.Unit = "s"
@@ -331,7 +331,7 @@ func NewDimmerChannel(device *Device) *DimmerChannel {
 	c.onTime.description.TabOrder = 3
 	// set default value
 	c.onTime.description.Default = 0.5
-	c.onTime.value = 0.5
+	c.onTime.value.Store(float64(0.5))
 	c.onTime.description.Min = 0.0
 	c.onTime.description.Max = 8.58259456e+07
 	c.onTime.description.Unit = "s"
@@ -832,7 +832,7 @@ func NewGasCounterChannel(device *Device) *GasCounterChannel {
 	// not visible, internal
 	meterType.Description().Flags = itf.ParameterFlagInternal
 	// fixed value "GAS-SENSOR"
-	meterType.value = 0
+	meterType.value.Store(0)
 	c.AddMasterParam(meterType)
 
 	// add ENERGY_COUNTER parameter
@@ -884,7 +884,7 @@ func NewGasCounterChannel(device *Device) *GasCounterChannel {
 	// internal
 	fakeBoot.Description().Flags = itf.ParameterFlagVisible | itf.ParameterFlagInternal
 	// fixed value false
-	fakeBoot.value = false
+	fakeBoot.value.Store(false)
 	c.AddValueParam(fakeBoot)
 
 	return c

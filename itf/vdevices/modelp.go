@@ -2,6 +2,7 @@ package vdevices
 
 import (
 	"fmt"
+	"sync/atomic"
 
 	"github.com/mdzio/go-hmccu/itf"
 )
@@ -44,17 +45,16 @@ type BoolParameter struct {
 	// device/channel is locked.
 	OnSetValue func(value bool) (ok bool)
 
-	value bool
+	value atomic.Bool
 }
 
 // check interface implementation
 var _ GenericParameter = (*BoolParameter)(nil)
 
-// NewBoolParameter creates a BoolParameter (Type: BOOL). For an ACTION parameter
-// Type must be modified accordingly. The locker of the channel is used while
-// modifying the value. Following fields in the parameters description are
-// initialized to standard values: Type, Operation, Flags, Default, Min, Max,
-// ID.
+// NewBoolParameter creates a BoolParameter (Type: BOOL). For an ACTION
+// parameter Type must be modified accordingly. Following fields in the
+// parameters description are initialized to standard values: Type, Operation,
+// Flags, Default, Min, Max, ID.
 func NewBoolParameter(id string) *BoolParameter {
 	return &BoolParameter{
 		Parameter: Parameter{
@@ -72,7 +72,7 @@ func NewBoolParameter(id string) *BoolParameter {
 }
 
 // SetValue implements interface GenericParameter. This accessor is for external
-// systems. The associated channel must be locked.
+// systems.
 func (p *BoolParameter) SetValue(value interface{}) error {
 	if p.description.Operations&itf.ParameterOperationWrite == 0 {
 		return fmt.Errorf("Parameter not writeable: %s.%s", p.parentDescr.Address, p.description.ID)
@@ -83,13 +83,12 @@ func (p *BoolParameter) SetValue(value interface{}) error {
 	}
 	if p.OnSetValue == nil || p.OnSetValue(bvalue) {
 		p.publishValue(bvalue)
-		p.value = bvalue
+		p.value.Store(bvalue)
 	}
 	return nil
 }
 
-// InternalSetValue implements ValueAccessor. The associated channel must be
-// locked.
+// InternalSetValue implements ValueAccessor.
 func (p *BoolParameter) InternalSetValue(value interface{}) error {
 	bvalue, ok := value.(bool)
 	if !ok {
@@ -98,14 +97,14 @@ func (p *BoolParameter) InternalSetValue(value interface{}) error {
 	if p.description.Operations&itf.ParameterOperationEvent != 0 {
 		p.publishValue(bvalue)
 	}
-	p.value = bvalue
+	p.value.Store(bvalue)
 	return nil
 }
 
 // Value implements interface GenericParameter.  This accessor is for external
-// systems. The associated channel must be locked.
+// systems.
 func (p *BoolParameter) Value() interface{} {
-	return p.value
+	return p.value.Load()
 }
 
 // IntParameter represents a HM FLOAT value.
@@ -117,17 +116,16 @@ type IntParameter struct {
 	// device/channel is locked.
 	OnSetValue func(value int) (ok bool)
 
-	value int
+	value atomic.Int32
 }
 
 // check interface implementation
 var _ GenericParameter = (*IntParameter)(nil)
 
 // NewIntParameter creates an IntParameter (Type: INTEGER). For an ENUM
-// parameter Type must be modified accordingly. The locker of the channel is
-// used while modifying the value. Following fields in the parameters
-// description are initialized to standard values: Type, Operation, Flags,
-// Default (0), Min (-100000), Max (100000), ID.
+// parameter Type must be modified accordingly. Following fields in the
+// parameters description are initialized to standard values: Type, Operation,
+// Flags, Default (0), Min (-100000), Max (100000), ID.
 func NewIntParameter(id string) *IntParameter {
 	return &IntParameter{
 		Parameter: Parameter{
@@ -173,7 +171,7 @@ func (p *IntParameter) toInt(value interface{}) (int, error) {
 }
 
 // SetValue implements interface GenericParameter. This accessor is for external
-// systems. The associated channel must be locked.
+// systems.
 func (p *IntParameter) SetValue(value interface{}) error {
 	if p.description.Operations&itf.ParameterOperationWrite == 0 {
 		return fmt.Errorf("Parameter not writeable: %s.%s", p.parentDescr.Address, p.description.ID)
@@ -186,13 +184,12 @@ func (p *IntParameter) SetValue(value interface{}) error {
 		if p.description.Operations&itf.ParameterOperationEvent != 0 {
 			p.publishValue(ivalue)
 		}
-		p.value = ivalue
+		p.value.Store(int32(ivalue))
 	}
 	return nil
 }
 
-// InternalSetValue implements ValueAccessor. The associated channel must be
-// locked.
+// InternalSetValue implements ValueAccessor.
 func (p *IntParameter) InternalSetValue(value interface{}) error {
 	ivalue, err := p.toInt(value)
 	if err != nil {
@@ -201,14 +198,14 @@ func (p *IntParameter) InternalSetValue(value interface{}) error {
 	if p.description.Operations&itf.ParameterOperationEvent != 0 {
 		p.publishValue(ivalue)
 	}
-	p.value = ivalue
+	p.value.Store(int32(ivalue))
 	return nil
 }
 
 // Value implements interface GenericParameter.  This accessor is for external
-// systems. The associated channel must be locked.
+// systems.
 func (p *IntParameter) Value() interface{} {
-	return p.value
+	return int(p.value.Load())
 }
 
 // FloatParameter represents a HM FLOAT value.
@@ -220,16 +217,15 @@ type FloatParameter struct {
 	// device/channel is locked.
 	OnSetValue func(value float64) (ok bool)
 
-	value float64
+	value atomic.Value
 }
 
 // check interface implementation
 var _ GenericParameter = (*FloatParameter)(nil)
 
-// NewFloatParameter creates a FloatParameter (Type: FLOAT). The locker of the
-// channel is used while modifying the value. Following fields in the parameters
-// description are initialized to standard values: Type, Operation, Flags,
-// Default (0.0), Min (-100000), Max (100000), ID.
+// NewFloatParameter creates a FloatParameter (Type: FLOAT). Following fields in
+// the parameters description are initialized to standard values: Type,
+// Operation, Flags, Default (0.0), Min (-100000), Max (100000), ID.
 func NewFloatParameter(id string) *FloatParameter {
 	return &FloatParameter{
 		Parameter: Parameter{
@@ -247,7 +243,7 @@ func NewFloatParameter(id string) *FloatParameter {
 }
 
 // SetValue implements interface GenericParameter. This accessor is for external
-// systems. The associated channel must be locked.
+// systems.
 func (p *FloatParameter) SetValue(value interface{}) error {
 	if p.description.Operations&itf.ParameterOperationWrite == 0 {
 		return fmt.Errorf("Parameter not writeable: %s.%s", p.parentDescr.Address, p.description.ID)
@@ -258,13 +254,12 @@ func (p *FloatParameter) SetValue(value interface{}) error {
 	}
 	if p.OnSetValue == nil || p.OnSetValue(fvalue) {
 		p.publishValue(fvalue)
-		p.value = fvalue
+		p.value.Store(fvalue)
 	}
 	return nil
 }
 
-// InternalSetValue implements ValueAccessor. The associated channel must be
-// locked.
+// InternalSetValue implements ValueAccessor.
 func (p *FloatParameter) InternalSetValue(value interface{}) error {
 	fvalue, ok := value.(float64)
 	if !ok {
@@ -273,14 +268,19 @@ func (p *FloatParameter) InternalSetValue(value interface{}) error {
 	if p.description.Operations&itf.ParameterOperationEvent != 0 {
 		p.publishValue(fvalue)
 	}
-	p.value = fvalue
+	p.value.Store(fvalue)
 	return nil
 }
 
 // Value implements interface GenericParameter.  This accessor is for external
-// systems. The associated channel must be locked.
+// systems.
 func (p *FloatParameter) Value() interface{} {
-	return p.value
+	v := p.value.Load()
+	if v == nil {
+		return 0.0
+	} else {
+		return v.(float64)
+	}
 }
 
 // StringParameter represents a HM STRING value.
@@ -292,16 +292,15 @@ type StringParameter struct {
 	// device/channel is locked.
 	OnSetValue func(value string) (ok bool)
 
-	value string
+	value atomic.Value
 }
 
 // check interface implementation
 var _ GenericParameter = (*StringParameter)(nil)
 
-// NewStringParameter creates a StringParameter (Type: STRING). The locker of
-// the channel is used while modifying the value. Following fields in the
-// parameters description are initialized to standard values: Type, Operation,
-// Flags, Default (""), Min (""), Max (""), ID.
+// NewStringParameter creates a StringParameter (Type: STRING). Following fields
+// in the parameters description are initialized to standard values: Type,
+// Operation, Flags, Default (""), Min (""), Max (""), ID.
 func NewStringParameter(id string) *StringParameter {
 	return &StringParameter{
 		Parameter: Parameter{
@@ -319,7 +318,7 @@ func NewStringParameter(id string) *StringParameter {
 }
 
 // SetValue implements interface GenericParameter. This accessor is for external
-// systems. The associated channel must be locked.
+// systems.
 func (p *StringParameter) SetValue(value interface{}) error {
 	if p.description.Operations&itf.ParameterOperationWrite == 0 {
 		return fmt.Errorf("Parameter not writeable: %s.%s", p.parentDescr.Address, p.description.ID)
@@ -330,13 +329,12 @@ func (p *StringParameter) SetValue(value interface{}) error {
 	}
 	if p.OnSetValue == nil || p.OnSetValue(svalue) {
 		p.publishValue(svalue)
-		p.value = svalue
+		p.value.Store(svalue)
 	}
 	return nil
 }
 
-// InternalSetValue implements ValueAccessor. The associated channel must be
-// locked.
+// InternalSetValue implements ValueAccessor.
 func (p *StringParameter) InternalSetValue(value interface{}) error {
 	svalue, ok := value.(string)
 	if !ok {
@@ -345,12 +343,17 @@ func (p *StringParameter) InternalSetValue(value interface{}) error {
 	if p.description.Operations&itf.ParameterOperationEvent != 0 {
 		p.publishValue(svalue)
 	}
-	p.value = svalue
+	p.value.Store(svalue)
 	return nil
 }
 
 // Value implements interface GenericParameter.  This accessor is for external
-// systems. The associated channel must be locked.
+// systems.
 func (p *StringParameter) Value() interface{} {
-	return p.value
+	v := p.value.Load()
+	if v == nil {
+		return ""
+	} else {
+		return v.(string)
+	}
 }
