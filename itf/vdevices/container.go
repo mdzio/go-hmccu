@@ -17,9 +17,6 @@ type GenericDevice interface {
 	AddMasterParam(GenericParameter)
 	MasterParamset() GenericParamset
 
-	// The device must be locked while reading or writing the master paramset.
-	sync.Locker
-
 	Dispose()
 }
 
@@ -34,9 +31,6 @@ type GenericChannel interface {
 
 	AddValueParam(GenericParameter)
 	ValueParamset() GenericParamset
-
-	// The channel must be locked while reading or writing paramsets.
-	sync.Locker
 
 	Dispose()
 }
