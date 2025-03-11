@@ -3,7 +3,6 @@ package vdevices
 import (
 	"fmt"
 	"strconv"
-	"sync"
 
 	"github.com/mdzio/go-hmccu/itf"
 )
@@ -12,8 +11,6 @@ import (
 // implements interface GenericDevice. The structure of a device (channels and
 // parameters) must not be changed after adding to the Container.
 type Device struct {
-	sync.Mutex
-
 	description    *itf.DeviceDescription
 	masterParamset Paramset
 	channels       []GenericChannel
@@ -105,8 +102,6 @@ func (d *Device) Dispose() {
 
 // Channel implements interface GenericChannel.
 type Channel struct {
-	sync.Mutex
-
 	description    *itf.DeviceDescription
 	masterParamset Paramset
 	valueParamset  Paramset
