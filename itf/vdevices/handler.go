@@ -33,6 +33,7 @@ type Synchronizer interface {
 // Handler handles requests from logic layers.
 type Handler struct {
 	ccuAddr          string
+	useInternalPorts bool
 	devices          *Container
 	deletionNotifier func(address string)
 
@@ -43,9 +44,10 @@ type Handler struct {
 
 // NewHandler creates a Handler. deletionNotifier is called, when the CCU
 // initiates a device deletion.
-func NewHandler(ccuAddr string, devices *Container, deletionNotifier func(address string)) *Handler {
+func NewHandler(ccuAddr string, useInternalPorts bool, devices *Container, deletionNotifier func(address string)) *Handler {
 	return &Handler{
 		ccuAddr:          ccuAddr,
+		useInternalPorts: useInternalPorts,
 		devices:          devices,
 		deletionNotifier: deletionNotifier,
 		servants:         make(map[string]*servant),
@@ -90,7 +92,7 @@ func (h *Handler) PublishEvent(address, valueKey string, value interface{}) {
 
 // Init implements DeviceLayer.
 func (h *Handler) Init(receiverAddress, interfaceID string) error {
-	log.Debugf("Registering logic layer: %s", receiverAddress)
+	log.Infof("Registering logic layer: %s", receiverAddress)
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
 
@@ -103,20 +105,23 @@ func (h *Handler) Init(receiverAddress, interfaceID string) error {
 		return nil
 	}
 
-	// replace receiver addresses
+	// Replace receiver addresses if no internal ports are to be used. This is
+	// the case if the application is not running on the CCU.
 	var addr string
-	switch receiverAddress {
-	case "xmlrpc_bin://127.0.0.1:31999":
+	if !h.useInternalPorts && receiverAddress == "xmlrpc_bin://127.0.0.1:31999" {
 		// non-binary XML-RPC works for ReGaHss also
 		addr = h.ccuAddr + ":1999"
-		log.Debugf("Patched receiver address: %s", addr)
-	case "http://127.0.0.1:39292/bidcos":
+	} else if !h.useInternalPorts && receiverAddress == "http://127.0.0.1:39292/bidcos" {
+		// HMIP-Server
 		addr = h.ccuAddr + ":9292/bidcos"
-		log.Debugf("Patched receiver address: %s", addr)
-	default:
-		// remove protocol prefix
-		addr = strings.TrimPrefix(strings.TrimPrefix(receiverAddress, "http://"), "xmlrpc://")
+	} else {
+		// remove any protocol prefix
+		addr = receiverAddress
+		if p := strings.Index(addr, "://"); p != -1 {
+			addr = addr[p+3:]
+		}
 	}
+	log.Debugf("Patched receiver address: %s", addr)
 
 	// create new servant
 	s = newServant(addr, interfaceID, h.devices)

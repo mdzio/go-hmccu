@@ -24,7 +24,7 @@ func TestModel(t *testing.T) {
 	vdevs := NewContainer()
 
 	// virtual devices handler
-	vdevHandler := NewHandler("", vdevs, func(address string) {
+	vdevHandler := NewHandler("", false, vdevs, func(address string) {
 		log.Debugf("OnDelete called: %s", address)
 		onDeletionCalled.Store(address)
 	})

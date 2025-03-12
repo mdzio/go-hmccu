@@ -7,11 +7,11 @@ To register the interface at the logic layer of the CCU, the CCU file
 the root element. Replace the IP address 192.168.0.20 with the host address
 running this example:
 
-    <ipc>
-        <name>My-Virtual-Devices</name>
-        <url>xmlrpc://192.168.0.20:2124/RPC2</url>
-        <info>My Virtual Devices</info>
-    </ipc>
+	<ipc>
+	    <name>My-Virtual-Devices</name>
+	    <url>xmlrpc://192.168.0.20:2124/RPC2</url>
+	    <info>My Virtual Devices</info>
+	</ipc>
 
 Authentication of the CCU API under Control Panel → Security must be switched
 off.
@@ -19,17 +19,17 @@ off.
 If not running on the CCU, specify the address of the CCU on the command line.
 Replace the IP address 192.168.0.10 with the address of the CCU:
 
-    -ccu 192.168.0.10
+	-ccu 192.168.0.10
 
 Then restart the ReGaHss and HMServer with these commands:
 
-    /etc/init.d/S70ReGaHss restart
-    /etc/init.d/S62HMServer restart
+	/etc/init.d/S70ReGaHss restart
+	/etc/init.d/S62HMServer restart
 
 On RaspberryMatic, monit may possibly interfere. It should therefore be
 deactivated:
 
-    monit unmonitor all
+	monit unmonitor all
 
 Do not forget to restore the InterfacesList.xml afterwards and to restart the
 ReGaHss and HMServer. The file is automatically restored when rebooting the CCU.
@@ -88,7 +88,7 @@ func run() error {
 	vdevs := vdevices.NewContainer()
 
 	// virtual devices handler
-	vdevHandler := vdevices.NewHandler(*ccuAddress, vdevs, func(string) {})
+	vdevHandler := vdevices.NewHandler(*ccuAddress, false, vdevs, func(string) {})
 	defer vdevHandler.Close()
 	vdevs.Synchronizer = vdevHandler
 
