@@ -48,10 +48,10 @@ func NewMaintenanceChannel(device *Device) *MaintenanceChannel {
 
 // SetUnreach sets the connection state of the device.
 func (c *MaintenanceChannel) SetUnreach(value bool) {
-	c.unreach.InternalSetValue(value)
-	if value {
+	if value && !c.unreach.Value().(bool) {
 		c.stickyUnreach.InternalSetValue(true)
 	}
+	c.unreach.InternalSetValue(value)
 }
 
 // DigitalChannel implements a standard HM switch channel.

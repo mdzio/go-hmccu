@@ -2,7 +2,6 @@ package vdevices
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -47,7 +46,7 @@ func TestAddToInterfaceList(t *testing.T) {
 	}
 	defer os.Remove("out.xml")
 
-	content, err := ioutil.ReadFile("out.xml")
+	content, err := os.ReadFile("out.xml")
 	if err != nil {
 		t.Fatal(err)
 	}
