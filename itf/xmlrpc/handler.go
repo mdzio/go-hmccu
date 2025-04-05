@@ -36,7 +36,7 @@ func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	reqLimitReader := http.MaxBytesReader(resp, req.Body, limit)
 	reqBuf, err := io.ReadAll(reqLimitReader)
 	if err != nil {
-		svrLog.Errorf("Reading of request failed from %s: %v", req.RemoteAddr, err)
+		svrLog.Debugf("Reading of request failed from %s: %v", req.RemoteAddr, err)
 		http.Error(resp, "Reading of request failed: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -52,7 +52,7 @@ func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	dec.CharsetReader = charset.NewReaderLabel
 	err = dec.Decode(methodCall)
 	if err != nil {
-		svrLog.Errorf("Decoding of request from %s failed: %v", req.RemoteAddr, err)
+		svrLog.Debugf("Decoding of request from %s failed: %v", req.RemoteAddr, err)
 		http.Error(resp, "Decoding of request failed: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -72,7 +72,7 @@ func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	res, err := h.Dispatch(methodCall.MethodName, args)
 	var methodResponse *MethodResponse
 	if err != nil {
-		svrLog.Warningf("Sending error response to %s: %v", req.RemoteAddr, err)
+		svrLog.Debugf("Sending error response to %s: %v", req.RemoteAddr, err)
 		methodResponse = newFaultResponse(err)
 	} else {
 		methodResponse = newMethodResponse(res)
