@@ -385,9 +385,10 @@ func (sc *Client) Execute(script string) ([]string, error) {
 	var resp []string
 	for scn.Scan() {
 		l := scn.Text()
-		if !strings.HasPrefix(l, "<xml><exec>") {
-			resp = append(resp, l)
+		if strings.HasPrefix(l, "<xml><exec>") {
+			break
 		}
+		resp = append(resp, l)
 	}
 	if scn.Err() != nil {
 		return nil, fmt.Errorf("Parsing of response failed from %s: %v", addr, scn.Err())
