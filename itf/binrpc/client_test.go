@@ -4,13 +4,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mdzio/go-hmccu/itf/xmlrpc"
-	"github.com/mdzio/go-lib/testutil"
+	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
+	"github.com/mdzio/go-hmccu/v2/testcfg"
 )
 
 // Test configuration (environment variables)
 const (
-	// LOG_LEVEL: OFF, ERROR, WARNING, INFO, DEBUG, TRACE
+	// LOG_LEVEL: ERROR, WARN, INFO, DEBUG
 
 	// hostname or IP address of the test CCU, e.g. 192.168.0.10
 	ccuAddress = "CCU_ADDRESS"
@@ -23,7 +23,7 @@ const (
 
 func newTestClient(t *testing.T) *Client {
 	// use CUxD BIN-RPC interface
-	return &Client{Addr: testutil.Config(t, ccuAddress) + ":8701"}
+	return &Client{Addr: testcfg.Config(t, ccuAddress) + ":8701"}
 }
 
 func TestClient_Call(t *testing.T) {

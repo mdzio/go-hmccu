@@ -71,7 +71,7 @@ func (d *BasicDispatcher) AddSystemMethods() {
 			if q.Err() != nil {
 				return nil, fmt.Errorf("Invalid system.multicall: %v", q.Err())
 			}
-			svrLog.Debugf("Call of method system.multicall with %d elements received", len(calls))
+			svrLog.Debug("Call of method system.multicall received", "elementCount", len(calls))
 			var results []*Value
 			for _, call := range calls {
 				methodName := call.Key("methodName").String()

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"sort"
@@ -13,8 +14,6 @@ import (
 	"strings"
 	"text/template"
 	"time"
-
-	"github.com/mdzio/go-logging"
 
 	"golang.org/x/text/encoding/charmap"
 )
@@ -144,7 +143,7 @@ if (sv) {
 }`
 
 var (
-	scriptLog = logging.Get("script-client")
+	scriptLog = slog.With("component", "script-client")
 
 	enumAspectsTempl  = template.Must(template.New("enumAspects").Parse(enumAspectsScript))
 	enumDevicesTempl  = template.Must(template.New("enumDevices").Parse(enumDevicesScript))
@@ -340,18 +339,24 @@ type Client struct {
 
 	// Limits the size of a valid response
 	RespLimit int64
+
+	// User name for HTTP basic authentication
+	UserName string
+
+	// Password for HTTP basic authentication
+	Password string
 }
 
 // Execute remotely executes a HM script on the CCU.
 func (sc *Client) Execute(script string) ([]string, error) {
-	scriptLog.Trace("Executing HM script: ", script)
+	scriptLog.Debug("Executing HM script", "script", script)
 
 	// encode request body with ISO8859-1
 	var reqBuf bytes.Buffer
 	reqWriter := charmap.ISO8859_1.NewEncoder().Writer(&reqBuf)
 	reqWriter.Write([]byte(script))
 
-	// http post
+	// build address
 	var port string
 	if sc.UseInternalPort {
 		port = "8183"
@@ -359,9 +364,18 @@ func (sc *Client) Execute(script string) ([]string, error) {
 		port = "8181"
 	}
 	addr := "http://" + sc.Addr + ":" + port + "/tclrega.exe"
-	httpResp, err := http.Post(addr, "", bytes.NewReader(reqBuf.Bytes()))
+
+	// http post
+	httpReq, err := http.NewRequest(http.MethodPost, addr, bytes.NewReader(reqBuf.Bytes()))
 	if err != nil {
-		return nil, fmt.Errorf("HTTP request failed on %s: %v", addr, err)
+		return nil, fmt.Errorf("HTTP request creation failed on %s: %w", addr, err)
+	}
+	if sc.UserName != "" || sc.Password != "" {
+		httpReq.SetBasicAuth(sc.UserName, sc.Password)
+	}
+	httpResp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("HTTP request failed on %s: %w", addr, err)
 	}
 	defer httpResp.Body.Close()
 
@@ -393,9 +407,7 @@ func (sc *Client) Execute(script string) ([]string, error) {
 	if scn.Err() != nil {
 		return nil, fmt.Errorf("Parsing of response failed from %s: %v", addr, scn.Err())
 	}
-	if scriptLog.TraceEnabled() {
-		scriptLog.Trace("HM script response: ", strings.Join(resp, "\\n"))
-	}
+	scriptLog.Debug("HM script response", "response", strings.Join(resp, "\\n"))
 	return resp, nil
 }
 
@@ -462,7 +474,7 @@ func (sc *Client) Devices() ([]DeviceDef, error) {
 
 // Channels retrieves the channels of a device from the CCU.
 func (sc *Client) Channels(iseID string) ([]ChannelDef, error) {
-	scriptLog.Debugf("Retrieving channels of device: %s", iseID)
+	scriptLog.Debug("Retrieving channels of device", "iseId", iseID)
 	resp, err := sc.ExecuteTempl(enumChannelsTempl, iseID)
 	if err != nil {
 		return nil, err
@@ -528,7 +540,7 @@ func (sc *Client) SystemVariables() (SysVarDefs, error) {
 			// operations
 			op, err := strconv.Atoi(fs[6])
 			if err != nil {
-				scriptLog.Warning("Retrieving list of system variables: Invalid operations: ", l)
+				scriptLog.Warn("Retrieving list of system variables: Invalid operations", "line", l)
 				continue
 			}
 			sv.Operations = op
@@ -539,13 +551,13 @@ func (sc *Client) SystemVariables() (SysVarDefs, error) {
 			case "FLOAT":
 				min, err := strconv.ParseFloat(fs[5], 64)
 				if err != nil {
-					scriptLog.Warning("Retrieving list of system variables: Invalid minimum: ", l)
+					scriptLog.Warn("Retrieving list of system variables: Invalid minimum", "line", l)
 					continue
 				}
 				sv.Minimum = &min
 				max, err := strconv.ParseFloat(fs[3], 64)
 				if err != nil {
-					scriptLog.Warning("Retrieving list of system variables: Invalid maximum: ", l)
+					scriptLog.Warn("Retrieving list of system variables: Invalid maximum", "line", l)
 					continue
 				}
 				sv.Maximum = &max
@@ -560,7 +572,7 @@ func (sc *Client) SystemVariables() (SysVarDefs, error) {
 			}
 			sysvars = append(sysvars, &sv)
 		} else {
-			scriptLog.Warning("Retrieving list of system variables: Invalid response line: ", l)
+			scriptLog.Warn("Retrieving list of system variables: Invalid response line", "line", l)
 		}
 	}
 
@@ -597,9 +609,7 @@ func (sc *Client) ReadValues(objs []ValObjDef) ([]Value, error) {
 		sb.WriteString(obj.ISEID)
 	}
 	ids := sb.String()
-	if scriptLog.DebugEnabled() {
-		scriptLog.Debug("Reading values of objects: ", strings.ReplaceAll(ids, "\t", " "))
-	}
+	scriptLog.Debug("Reading values of objects", "ids", strings.ReplaceAll(ids, "\t", " "))
 
 	// execute script
 	resp, err := sc.ExecuteTempl(readValuesTempl, ids)
@@ -696,7 +706,7 @@ func (sc *Client) ReadValues(objs []ValObjDef) ([]Value, error) {
 
 // WriteValue sets the value of a ReGaDOM object.
 func (sc *Client) WriteValue(obj ValObjDef, value interface{}) error {
-	scriptLog.Debugf("Writing value %v to object %s", value, obj.ISEID)
+	scriptLog.Debug("Writing value to object", "value", value, "iseId", obj.ISEID)
 
 	// convert value
 	var strval string
@@ -801,7 +811,7 @@ func (sc *Client) Programs() ([]*ProgramDef, error) {
 
 // ExecProgram executes a ReGaHssProgram.
 func (sc *Client) ExecProgram(p *ProgramDef) error {
-	scriptLog.Debug("Executing program: ", p.DisplayName)
+	scriptLog.Debug("Executing program", "displayName", p.DisplayName)
 	resp, err := sc.ExecuteTempl(execProgramTempl, p.ISEID)
 	if err != nil {
 		return err
@@ -817,7 +827,7 @@ func (sc *Client) ExecProgram(p *ProgramDef) error {
 
 // ReadExecTime reads the last execution time of a ReGaHssProgram.
 func (sc *Client) ReadExecTime(p *ProgramDef) (time.Time, error) {
-	scriptLog.Debugf("Reading last executing time: %v", p.DisplayName)
+	scriptLog.Debug("Reading last executing time", "displayName", p.DisplayName)
 	resp, err := sc.ExecuteTempl(readExecTimeTempl, p.ISEID)
 	if err != nil {
 		return time.Time{}, err

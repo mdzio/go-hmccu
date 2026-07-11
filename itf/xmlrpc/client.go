@@ -5,9 +5,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
-
-	"github.com/mdzio/go-logging"
 
 	"golang.org/x/net/html/charset"
 	"golang.org/x/text/encoding/charmap"
@@ -21,7 +20,7 @@ type Caller interface {
 	Call(method string, params Values) (*Value, error)
 }
 
-var clnLog = logging.Get("xmlrpc-client")
+var clnLog = slog.With("component", "xmlrpc-client")
 
 // Client provides access to an XML-RPC server.
 type Client struct {
@@ -31,7 +30,7 @@ type Client struct {
 
 // Call executes an remote procedure call. Call implements Caller.
 func (c *Client) Call(method string, params Values) (*Value, error) {
-	clnLog.Tracef("Calling method %s on %s", method, c.Addr)
+	clnLog.Debug("Calling method", "method", method, "address", c.Addr)
 
 	// build XML object tree
 	ps := make([]*Param, len(params))
@@ -56,10 +55,8 @@ func (c *Client) Call(method string, params Values) (*Value, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Encoding of request for %s failed: %v", c.Addr, err)
 	}
-	if clnLog.TraceEnabled() {
-		// attention: log message is ISO8859-1 encoded!
-		clnLog.Tracef("Request XML: %s", reqBuf.String())
-	}
+	// attention: log message is ISO8859-1 encoded!
+	clnLog.Debug("Request XML", "xml", reqBuf.String())
 
 	// http post
 	httpResp, err := http.Post("http://"+c.Addr, "text/xml", bytes.NewReader(reqBuf.Bytes()))
@@ -83,10 +80,8 @@ func (c *Client) Call(method string, params Values) (*Value, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Reading of response failed from %s: %v", c.Addr, err)
 	}
-	if clnLog.TraceEnabled() {
-		// attention: log message is probably ISO8859-1 encoded!
-		clnLog.Tracef("Response XML: %s", string(respBuf))
-	}
+	// attention: log message is probably ISO8859-1 encoded!
+	clnLog.Debug("Response XML", "xml", string(respBuf))
 
 	// decode response from xml
 	respReader := bytes.NewBuffer(respBuf)

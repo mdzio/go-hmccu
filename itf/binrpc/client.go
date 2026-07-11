@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"time"
 
-	"github.com/mdzio/go-hmccu/itf/xmlrpc"
-	"github.com/mdzio/go-logging"
+	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
 )
 
 const (
@@ -19,7 +19,7 @@ const (
 	responseSizeLimit = 2 * 1024 * 1024
 )
 
-var clnLog = logging.Get("binrpc-client")
+var clnLog = slog.With("component", "binrpc-client")
 
 // Client provides access to an BIN-RPC server.
 type Client struct {
@@ -30,7 +30,7 @@ type Client struct {
 // Call executes an remote procedure call. Call implements xmlrpc.Caller.
 func (c *Client) Call(method string, params xmlrpc.Values) (*xmlrpc.Value, error) {
 	// log
-	clnLog.Tracef("Calling method %s on %s with parameters %v", method, c.Addr, params)
+	clnLog.Debug("Calling method", "method", method, "address", c.Addr, "parameters", params)
 
 	// open connection
 	conn, err := net.Dial("tcp", c.Addr)
@@ -72,11 +72,11 @@ func (c *Client) Call(method string, params xmlrpc.Values) (*xmlrpc.Value, error
 		if !methodError {
 			return nil, fmt.Errorf("Decoding of response from %s failed: %w", c.Addr, err)
 		}
-		clnLog.Tracef("Result: %v", err)
+		clnLog.Debug("Result error", "error", err)
 		return nil, err
 	}
 
 	// log
-	clnLog.Tracef("Result: %v", resp)
+	clnLog.Debug("Result", "response", resp)
 	return resp, nil
 }

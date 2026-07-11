@@ -3,12 +3,12 @@ package xmlrpc
 import (
 	"testing"
 
-	"github.com/mdzio/go-lib/testutil"
+	"github.com/mdzio/go-hmccu/v2/testcfg"
 )
 
 // Test configuration (environment variables)
 const (
-	// LOG_LEVEL: OFF, ERROR, WARNING, INFO, DEBUG, TRACE
+	// LOG_LEVEL: ERROR, WARN, INFO, DEBUG
 
 	// hostname or IP address of the test CCU, e.g. 192.168.0.10
 	ccuAddress = "CCU_ADDRESS"
@@ -16,7 +16,7 @@ const (
 
 func itfAddress(t *testing.T) string {
 	// use BidCos-RF XML-RPC interface
-	return testutil.Config(t, ccuAddress) + ":2001"
+	return testcfg.Config(t, ccuAddress) + ":2001"
 }
 
 func TestClient_Call(t *testing.T) {

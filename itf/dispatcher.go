@@ -2,13 +2,13 @@ package itf
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
-	"github.com/mdzio/go-hmccu/itf/xmlrpc"
-	"github.com/mdzio/go-logging"
+	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
 )
 
-var svrLog = logging.Get("itf-server")
+var svrLog = slog.With("component", "itf-server")
 
 // A LogicLayer handles notifications from a device interface processes (of the CCU).
 type LogicLayer interface {
@@ -141,7 +141,7 @@ func (d *Dispatcher) AddLogicLayer(ll LogicLayer) {
 		if q.Err() != nil {
 			return nil, fmt.Errorf("Invalid argument for event method: %v", q.Err())
 		}
-		svrLog.Debugf("Call of method event received: %s, %s, %s, %v", interfaceID, address, valueKey, value)
+		svrLog.Debug("Call of method event received", "interfaceId", interfaceID, "address", address, "valueKey", valueKey, "value", value)
 		err := ll.Event(interfaceID, address, valueKey, value)
 		if err != nil {
 			return nil, err
@@ -165,7 +165,7 @@ func (d *Dispatcher) AddLogicLayer(ll LogicLayer) {
 		if q.Err() != nil {
 			return nil, fmt.Errorf("Invalid argument for listDevices method: %v", q.Err())
 		}
-		svrLog.Debugf("Call of method listDevices received: %s", interfaceID)
+		svrLog.Debug("Call of method listDevices received", "interfaceId", interfaceID)
 		return &xmlrpc.Value{Array: &xmlrpc.Array{Data: []*xmlrpc.Value{}}}, nil
 	})
 
@@ -188,13 +188,11 @@ func (d *Dispatcher) AddLogicLayer(ll LogicLayer) {
 			}
 			descr = append(descr, d)
 		}
-		if svrLog.DebugEnabled() {
-			var addrs []string
-			for _, dd := range descr {
-				addrs = append(addrs, dd.Address)
-			}
-			svrLog.Debugf("Call of method newDevices received: %s, %s", interfaceID, strings.Join(addrs, " "))
+		var addrs []string
+		for _, dd := range descr {
+			addrs = append(addrs, dd.Address)
 		}
+		svrLog.Debug("Call of method newDevices received", "interfaceId", interfaceID, "addresses", strings.Join(addrs, " "))
 		err := ll.NewDevices(interfaceID, descr)
 		if err != nil {
 			return nil, err
@@ -216,7 +214,7 @@ func (d *Dispatcher) AddLogicLayer(ll LogicLayer) {
 		if q.Err() != nil {
 			return nil, fmt.Errorf("Invalid argument(s) for deleteDevices method: %v", q.Err())
 		}
-		svrLog.Debugf("Call of method deleteDevices received: %s, %s", interfaceID, strings.Join(addresses, " "))
+		svrLog.Debug("Call of method deleteDevices received", "interfaceId", interfaceID, "addresses", strings.Join(addresses, " "))
 		err := ll.DeleteDevices(interfaceID, addresses)
 		if err != nil {
 			return nil, err
@@ -235,7 +233,7 @@ func (d *Dispatcher) AddLogicLayer(ll LogicLayer) {
 		if q.Err() != nil {
 			return nil, fmt.Errorf("Invalid argument(s) for updateDevice method: %v", q.Err())
 		}
-		svrLog.Debugf("Call of method updateDevice received: %s, %s, %d", interfaceID, address, hint)
+		svrLog.Debug("Call of method updateDevice received", "interfaceId", interfaceID, "address", address, "hint", hint)
 		err := ll.UpdateDevice(interfaceID, address, hint)
 		if err != nil {
 			return nil, err
@@ -254,7 +252,7 @@ func (d *Dispatcher) AddLogicLayer(ll LogicLayer) {
 		if q.Err() != nil {
 			return nil, fmt.Errorf("Invalid argument(s) for replaceDevice method: %v", q.Err())
 		}
-		svrLog.Debugf("Call of method replaceDevice received: %s, %s, %s", interfaceID, oldDeviceAddress, newDeviceAddress)
+		svrLog.Debug("Call of method replaceDevice received", "interfaceId", interfaceID, "oldDeviceAddress", oldDeviceAddress, "newDeviceAddress", newDeviceAddress)
 		err := ll.ReplaceDevice(interfaceID, oldDeviceAddress, newDeviceAddress)
 		if err != nil {
 			return nil, err
@@ -276,7 +274,7 @@ func (d *Dispatcher) AddLogicLayer(ll LogicLayer) {
 		if q.Err() != nil {
 			return nil, fmt.Errorf("Invalid argument(s) for readdedDevice method: %v", q.Err())
 		}
-		svrLog.Debugf("Call of method readdedDevice received: %s, %v", interfaceID, strings.Join(addresses, " "))
+		svrLog.Debug("Call of method readdedDevice received", "interfaceId", interfaceID, "addresses", strings.Join(addresses, " "))
 		err := ll.ReaddedDevice(interfaceID, addresses)
 		if err != nil {
 			return nil, err
@@ -288,7 +286,7 @@ func (d *Dispatcher) AddLogicLayer(ll LogicLayer) {
 	//
 	// Attention: This call is not forwarded to LogicLayer.
 	d.HandleFunc("setReadyConfig", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
-		svrLog.Debugf("Call of method setReadyConfig received, arguments: %s", args)
+		svrLog.Debug("Call of method setReadyConfig received", "arguments", args)
 		// not needed, not implemented
 		// return always an empty string
 		return &xmlrpc.Value{}, nil
@@ -313,7 +311,7 @@ func (d *Dispatcher) AddDeviceLayer(dl DeviceLayer) {
 		if q.Err() != nil {
 			return nil, fmt.Errorf("Invalid argument(s) for init method: %v", q.Err())
 		}
-		svrLog.Debugf("Call of method init received: %s, %s", receiverAddress, interfaceID)
+		svrLog.Debug("Call of method init received", "receiverAddress", receiverAddress, "interfaceId", interfaceID)
 		var err error
 		if n == 2 {
 			err = dl.Init(receiverAddress, interfaceID)
@@ -354,7 +352,7 @@ func (d *Dispatcher) AddDeviceLayer(dl DeviceLayer) {
 		if q.Err() != nil {
 			return nil, fmt.Errorf("Invalid argument(s) for deleteDevice method: %v", q.Err())
 		}
-		svrLog.Debugf("Call of method deleteDevice received: %s, %d", address, flags)
+		svrLog.Debug("Call of method deleteDevice received", "address", address, "flags", flags)
 		err := dl.DeleteDevice(address, flags)
 		if err != nil {
 			return nil, err
@@ -372,7 +370,7 @@ func (d *Dispatcher) AddDeviceLayer(dl DeviceLayer) {
 		if q.Err() != nil {
 			return nil, fmt.Errorf("Invalid argument(s) for getDeviceDescription method: %v", q.Err())
 		}
-		svrLog.Debugf("Call of method getDeviceDescription received: %s", address)
+		svrLog.Debug("Call of method getDeviceDescription received", "address", address)
 		descr, err := dl.GetDeviceDescription(address)
 		if err != nil {
 			return nil, err
@@ -391,7 +389,7 @@ func (d *Dispatcher) AddDeviceLayer(dl DeviceLayer) {
 		if q.Err() != nil {
 			return nil, fmt.Errorf("Invalid argument(s) for getParamsetDescription method: %v", q.Err())
 		}
-		svrLog.Debugf("Call of method getParamsetDescription received: %s, %s", deviceAddress, paramsetType)
+		svrLog.Debug("Call of method getParamsetDescription received", "deviceAddress", deviceAddress, "paramsetType", paramsetType)
 		psd, err := dl.GetParamsetDescription(deviceAddress, paramsetType)
 		if err != nil {
 			return nil, err
@@ -414,7 +412,7 @@ func (d *Dispatcher) AddDeviceLayer(dl DeviceLayer) {
 		if q.Err() != nil {
 			return nil, fmt.Errorf("Invalid argument(s) for getParamset method: %v", q.Err())
 		}
-		svrLog.Debugf("Call of method getParamset received: %s, %s", deviceAddress, paramsetKey)
+		svrLog.Debug("Call of method getParamset received", "deviceAddress", deviceAddress, "paramsetKey", paramsetKey)
 		ps, err := dl.GetParamset(deviceAddress, paramsetKey)
 		if err != nil {
 			return nil, err
@@ -443,7 +441,7 @@ func (d *Dispatcher) AddDeviceLayer(dl DeviceLayer) {
 		if q.Err() != nil {
 			return nil, fmt.Errorf("Invalid argument(s) for putParamset method: %v", q.Err())
 		}
-		svrLog.Debugf("Call of method putParamset received: %s, %s", deviceAddress, paramsetKey)
+		svrLog.Debug("Call of method putParamset received", "deviceAddress", deviceAddress, "paramsetKey", paramsetKey)
 		err := dl.PutParamset(deviceAddress, paramsetKey, ps)
 		if err != nil {
 			return nil, err
@@ -514,7 +512,7 @@ func (d *Dispatcher) AddDeviceLayer(dl DeviceLayer) {
 	//
 	// Attention: This call is not forwarded to DeviceLayer.
 	d.HandleFunc("reportValueUsage", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
-		svrLog.Debugf("Call of method reportValueUsage received, arguments: %s", args)
+		svrLog.Debug("Call of method reportValueUsage received", "arguments", args)
 		// not needed, not implemented
 		// return always true: action succeeded
 		return &xmlrpc.Value{Boolean: "1"}, nil
@@ -524,7 +522,7 @@ func (d *Dispatcher) AddDeviceLayer(dl DeviceLayer) {
 	//
 	// Attention: This call is not forwarded to DeviceLayer.
 	d.HandleFunc("getLinks", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
-		svrLog.Debugf("Call of method getLinks received, arguments: %s", args)
+		svrLog.Debug("Call of method getLinks received", "arguments", args)
 		// not needed, not implemented
 		// return always an empty array
 		return &xmlrpc.Value{Array: &xmlrpc.Array{}}, nil
@@ -534,7 +532,7 @@ func (d *Dispatcher) AddDeviceLayer(dl DeviceLayer) {
 	//
 	// Attention: This call is not forwarded to DeviceLayer.
 	d.HandleFunc("getParamsetId", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
-		svrLog.Debugf("Call of method getParamsetId received, arguments: %s", args)
+		svrLog.Debug("Call of method getParamsetId received", "arguments", args)
 		// not needed, not implemented
 		// return always an empty string
 		return &xmlrpc.Value{}, nil
@@ -544,7 +542,7 @@ func (d *Dispatcher) AddDeviceLayer(dl DeviceLayer) {
 	//
 	// Attention: This call is not forwarded to DeviceLayer.
 	d.HandleFunc("firmwareUpdateStatusChanged", func(args *xmlrpc.Value) (*xmlrpc.Value, error) {
-		svrLog.Debugf("Call of method firmwareUpdateStatusChanged received, arguments: %s", args)
+		svrLog.Debug("Call of method firmwareUpdateStatusChanged received", "arguments", args)
 		// not needed, not implemented
 		// return always an empty string
 		return &xmlrpc.Value{}, nil

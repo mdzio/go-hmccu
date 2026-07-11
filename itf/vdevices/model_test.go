@@ -7,10 +7,10 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/mdzio/go-hmccu/itf"
-	"github.com/mdzio/go-hmccu/itf/xmlrpc"
+	"github.com/mdzio/go-hmccu/v2/itf"
+	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
 
-	_ "github.com/mdzio/go-lib/testutil"
+	_ "github.com/mdzio/go-hmccu/v2/testcfg"
 )
 
 func TestModel(t *testing.T) {
@@ -25,7 +25,7 @@ func TestModel(t *testing.T) {
 
 	// virtual devices handler
 	vdevHandler := NewHandler("", false, vdevs, func(address string) {
-		log.Debugf("OnDelete called: %s", address)
+		log.Debug("OnDelete called", "address", address)
 		onDeletionCalled.Store(address)
 	})
 	defer vdevHandler.Close()
@@ -40,12 +40,12 @@ func TestModel(t *testing.T) {
 	// switch channel
 	sch := NewSwitchChannel(dev)
 	sch.OnSetState = func(value bool) bool {
-		log.Debugf("Switch channel %s is set: %t", sch.Description().Address, value)
+		log.Debug("Switch channel is set", "address", sch.Description().Address, "value", value)
 		atomic.AddInt32(&onSetStateCalled, 1)
 		return true
 	}
 	sch.OnDispose = func() {
-		log.Debugf("OnDispose called")
+		log.Debug("OnDispose called")
 		atomic.AddInt32(&onDisposeCalled, 1)
 	}
 

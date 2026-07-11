@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	_ "github.com/mdzio/go-lib/testutil"
+	_ "github.com/mdzio/go-hmccu/v2/testcfg"
 )
 
 const expectedInterfaceList = `<?xml version="1.0" encoding="utf-8" ?> 

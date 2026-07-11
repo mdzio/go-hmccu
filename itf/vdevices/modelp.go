@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/mdzio/go-hmccu/itf"
+	"github.com/mdzio/go-hmccu/v2/itf"
 )
 
 // Parameter implements GenericParameter.

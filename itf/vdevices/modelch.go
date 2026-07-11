@@ -1,7 +1,7 @@
 package vdevices
 
 import (
-	"github.com/mdzio/go-hmccu/itf"
+	"github.com/mdzio/go-hmccu/v2/itf"
 )
 
 // addInstallTest adds the INSTALL_TEST parameter for simulating a channel/device test

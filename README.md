@@ -2,6 +2,14 @@
 
 [go-hmccu](https://github.com/mdzio/go-hmccu) provides functionality in the programming language [Go](https://golang.org) to communicate with the CCU of the [HomeMatic home automation system](https://www.eq-3.de/produkte/homematic.html). Data points can be explored, read and written.
 
+## Breaking changes in v2.0.0
+
+* The logging framework has been changed from `github.com/mdzio/go-logging` to the `slog` package from the Go standard library.
+* All third-party dependencies have been removed, the module now only depends on the Go standard library.
+* To import the module use `github.com/mdzio/go-hmccu/v2`.
+
+Version 2.0.0 is not yet fully tested.
+
 ## Example programs
 
 ### device-info

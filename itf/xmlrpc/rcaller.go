@@ -3,7 +3,7 @@ package xmlrpc
 import (
 	"time"
 
-	"github.com/mdzio/go-lib/conc"
+	"github.com/mdzio/go-hmccu/v2/util"
 )
 
 type RetryingCaller struct {
@@ -17,7 +17,7 @@ type RetryingCaller struct {
 	RetryDelay time.Duration
 
 	// The repeated calls can be cancelled with this context.
-	Context conc.Context
+	Context util.Context
 }
 
 func (c *RetryingCaller) Call(method string, params Values) (*Value, error) {
@@ -35,7 +35,7 @@ func (c *RetryingCaller) Call(method string, params Values) (*Value, error) {
 		if rcnt > c.RetryCount {
 			return nil, err
 		}
-		clnLog.Debugf("Call of method %s failed, retry in %s: %v", method, c.RetryDelay, err)
+		clnLog.Debug("Call of method failed, retrying", "method", method, "retryDelay", c.RetryDelay, "error", err)
 		// wait before the next call
 		errc := c.Context.Sleep(c.RetryDelay)
 		if errc != nil {

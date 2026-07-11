@@ -8,12 +8,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/mdzio/go-hmccu/itf"
-	"github.com/mdzio/go-lib/conc"
-	"github.com/mdzio/go-logging"
+	"github.com/mdzio/go-hmccu/v2/itf"
+	"github.com/mdzio/go-hmccu/v2/util"
+	"log/slog"
 )
 
-var log = logging.Get("v-devices")
+var log = slog.With("component", "v-devices")
 
 const (
 	// template for a new interface entry
@@ -39,7 +39,7 @@ type Handler struct {
 
 	servants   map[string]*servant // key: receiverAddress
 	mtx        sync.Mutex          // for servants map
-	daemonPool conc.DaemonPool     // for background tasks
+	daemonPool util.DaemonPool     // for background tasks
 }
 
 // NewHandler creates a Handler. deletionNotifier is called, when the CCU
@@ -59,7 +59,7 @@ func (h *Handler) Close() {
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
 	for _, s := range h.servants {
-		h.daemonPool.Run(func(conc.Context) { s.close() })
+		h.daemonPool.Run(func(util.Context) { s.close() })
 	}
 	h.servants = make(map[string]*servant)
 	h.daemonPool.Close()
@@ -80,7 +80,7 @@ func (h *Handler) Synchronize() {
 func (h *Handler) PublishEvent(address, valueKey string, value interface{}) {
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
-	log.Tracef("Publishing event: %s, %s, %v", address, valueKey, value)
+	log.Debug("Publishing event", "address", address, "valueKey", valueKey, "value", value)
 	for _, s := range h.servants {
 		s.command(servantEvent{
 			address:  address,
@@ -92,14 +92,14 @@ func (h *Handler) PublishEvent(address, valueKey string, value interface{}) {
 
 // Init implements DeviceLayer.
 func (h *Handler) Init(receiverAddress, interfaceID string) error {
-	log.Infof("Registering logic layer: %s", receiverAddress)
+	log.Info("Registering logic layer", "receiverAddress", receiverAddress)
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
 
 	// already registered?
 	s, ok := h.servants[receiverAddress]
 	if ok {
-		log.Debugf("Logic layer is already registered: %s", receiverAddress)
+		log.Debug("Logic layer is already registered", "receiverAddress", receiverAddress)
 		// synchronize again with logic layer
 		s.command(servantSync{})
 		return nil
@@ -121,7 +121,7 @@ func (h *Handler) Init(receiverAddress, interfaceID string) error {
 			addr = addr[p+3:]
 		}
 	}
-	log.Debugf("Patched receiver address: %s", addr)
+	log.Debug("Patched receiver address", "address", addr)
 
 	// create new servant
 	s = newServant(addr, interfaceID, h.devices)
@@ -134,7 +134,7 @@ func (h *Handler) Init(receiverAddress, interfaceID string) error {
 
 // Deinit implements DeviceLayer.
 func (h *Handler) Deinit(receiverAddress string) error {
-	log.Debugf("Unregistering logic layer: %s", receiverAddress)
+	log.Debug("Unregistering logic layer", "receiverAddress", receiverAddress)
 	h.mtx.Lock()
 	defer h.mtx.Unlock()
 
@@ -142,9 +142,9 @@ func (h *Handler) Deinit(receiverAddress string) error {
 	s, ok := h.servants[receiverAddress]
 	if ok {
 		delete(h.servants, receiverAddress)
-		h.daemonPool.Run(func(conc.Context) { s.close() })
+		h.daemonPool.Run(func(util.Context) { s.close() })
 	} else {
-		log.Debugf("Logic layer is NOT registered: %s", receiverAddress)
+		log.Debug("Logic layer is NOT registered", "receiverAddress", receiverAddress)
 	}
 	return nil
 }
@@ -169,7 +169,7 @@ func (h *Handler) DeleteDevice(address string, flags int) error {
 	deviceAddr, channelAddr := itf.SplitAddress(address)
 	if channelAddr != "" {
 		// ignore deletion of a channel
-		log.Debugf("Deletion of channel ignored: %s", address)
+		log.Debug("Deletion of channel ignored", "address", address)
 		return nil
 	}
 	h.deletionNotifier(address)
@@ -331,7 +331,7 @@ func AddToInterfaceList(inFilePath, outFilePath, name, url, info string) error {
 
 	// generate entry
 	e := fmt.Sprintf(itfTmpl, name, url, info)
-	log.Tracef("Inserting into %s: %s", inFilePath, e)
+	log.Debug("Inserting into file", "inFilePath", inFilePath, "entry", e)
 
 	// insert entry
 	p := strings.Index(in, "</interfaces>")

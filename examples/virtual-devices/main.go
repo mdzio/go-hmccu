@@ -2,6 +2,23 @@
 This is an example of providing virtual devices to the CCU via an interface
 process.
 
+Command line arguments:
+
+	-ccu address
+		address of the CCU (default "127.0.0.1")
+	-devices number
+		number of devices (default 2)
+	-channels number
+		number of channels of each channel type (default 2)
+	-http port
+		port for serving HTTP (default 2124)
+	-log severity
+		specifies the minimum severity of printed log messages: ERROR, WARN, INFO, DEBUG
+	-prefix prefix
+		prefix for device serial numbers (default "VDT")
+
+Guide:
+
 To register the interface at the logic layer of the CCU, the CCU file
 /etc/config/InterfacesList.xml must be modified. Add a new ipc XML element below
 the root element. Replace the IP address 192.168.0.20 with the host address
@@ -13,7 +30,7 @@ running this example:
 	    <info>My Virtual Devices</info>
 	</ipc>
 
-Authentication of the CCU API under Control Panel → Security must be switched
+Authentication of the CCU API under Control Panel -> Security must be switched
 off.
 
 If not running on the CCU, specify the address of the CCU on the command line.
@@ -39,14 +56,14 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
 
-	"github.com/mdzio/go-hmccu/itf"
-	"github.com/mdzio/go-hmccu/itf/vdevices"
-	"github.com/mdzio/go-hmccu/itf/xmlrpc"
-	"github.com/mdzio/go-logging"
+	"github.com/mdzio/go-hmccu/v2/itf"
+	"github.com/mdzio/go-hmccu/v2/itf/vdevices"
+	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
 )
 
 const (
@@ -54,22 +71,32 @@ const (
 	rpcPath = "/RPC2"
 )
 
-var (
-	log = logging.Get("main")
+// wrap slog.Level to implement flag.Value interface
+type logLevel struct {
+	slog.Level
+}
 
-	logLevel    = logging.InfoLevel
+// Set implements flag.Value interface
+func (l *logLevel) Set(s string) error {
+	return l.UnmarshalText([]byte(s))
+}
+
+var (
+	log = slog.With("component", "main")
+
 	httpPort    = flag.Int("http", 2124, "`port` for serving HTTP")
 	ccuAddress  = flag.String("ccu", "127.0.0.1", "`address` of the CCU")
 	numDevices  = flag.Int("devices", 2, "`number` of devices")
 	numChannels = flag.Int("channels", 2, "`number` of channels of each channel type")
 	prefix      = flag.String("prefix", "VDT", "`prefix` for device serial numbers")
+	logLvl      logLevel // default slog.LevelInfo
 )
 
 func init() {
 	flag.Var(
-		&logLevel,
+		&logLvl,
 		"log",
-		"specifies the minimum `severity` of printed log messages: off, error, warning, info, debug or trace",
+		"specifies the minimum `severity` of printed log messages: ERROR, WARN, INFO, DEBUG",
 	)
 }
 
@@ -81,8 +108,9 @@ func run() error {
 	}
 	// flag.Parse calls os.Exit(2) on error
 	flag.Parse()
-	// set log options
-	logging.SetLevel(logLevel)
+
+	// set log level
+	slog.SetLogLoggerLevel(logLvl.Level)
 
 	// virtual device container
 	vdevs := vdevices.NewContainer()
@@ -97,7 +125,7 @@ func run() error {
 		addr := fmt.Sprintf("%s%03d", *prefix, devidx)
 		dev := vdevices.NewDevice(addr, "HmIP-MIO16-PCB", vdevHandler)
 		dev.OnDispose = func() {
-			log.Debugf("Device %s is disposed", dev.Description().Address)
+			log.Debug("Device disposed", "address", dev.Description().Address)
 		}
 		bp := vdevices.NewBoolParameter("BOOL_PARAM")
 		dev.AddMasterParam(bp)
@@ -105,41 +133,41 @@ func run() error {
 		// maintenance channel
 		mch := vdevices.NewMaintenanceChannel(dev)
 		mch.OnDispose = func() {
-			log.Debugf("Channel %s is disposed", mch.Description().Address)
+			log.Debug("Channel disposed", "address", mch.Description().Address)
 		}
-		log.Infof("Created maintenance channel: %s", mch.Description().Address)
+		log.Info("Created maintenance channel", "address", mch.Description().Address)
 
 		// switch channels
 		for chidx := 0; chidx < *numChannels; chidx++ {
 			sch := vdevices.NewSwitchChannel(dev)
 			sch.OnSetState = func(value bool) bool {
-				log.Debugf("Switch channel %s is set: %t", sch.Description().Address, value)
+				log.Debug("Switch channel is set", "address", sch.Description().Address, "value", value)
 				return true
 			}
 			sch.OnDispose = func() {
-				log.Debugf("Channel %s is disposed", sch.Description().Address)
+				log.Debug("Channel disposed", "address", sch.Description().Address)
 			}
 			bp = vdevices.NewBoolParameter("BOOL_PARAM")
 			sch.AddMasterParam(bp)
-			log.Infof("Created switch channel: %s", sch.Description().Address)
+			log.Info("Created switch channel", "address", sch.Description().Address)
 		}
 
 		// key channels
 		for chidx := 0; chidx < *numChannels; chidx++ {
 			kch := vdevices.NewKeyChannel(dev)
 			kch.OnPressShort = func() bool {
-				log.Debugf("Key channel %s is pressed short", kch.Description().Address)
+				log.Debug("Key channel pressed short", "address", kch.Description().Address)
 				return true
 			}
 			kch.OnPressLong = func() bool {
-				log.Debugf("Key channel %s is pressed long", kch.Description().Address)
+				log.Debug("Key channel pressed long", "address", kch.Description().Address)
 				return true
 			}
-			log.Infof("Created key channel: %s", kch.Description().Address)
+			log.Info("Created key channel", "address", kch.Description().Address)
 		}
 
 		vdevs.AddDevice(dev)
-		log.Infof("Created device: %s", dev.Description().Address)
+		log.Info("Created device", "address", dev.Description().Address)
 	}
 
 	// HM RPC dispatcher
@@ -151,7 +179,7 @@ func run() error {
 	http.Handle(rpcPath, httpHandler)
 
 	// run HTTP server
-	log.Infof("Starting HTTP server on port %d", *httpPort)
+	log.Info("Starting HTTP server", "port", *httpPort)
 	return http.ListenAndServe(":"+strconv.Itoa(*httpPort), nil)
 }
 
@@ -159,7 +187,7 @@ func main() {
 	err := run()
 	// log fatal error
 	if err != nil {
-		log.Error(err)
+		log.Error("Application failed", "error", err)
 		os.Exit(1)
 	}
 	os.Exit(0)

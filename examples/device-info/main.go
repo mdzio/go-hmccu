@@ -3,21 +3,24 @@ This example shows how to read all information about a CCU device. The output is
 valid Go code, which can be used for defining virtual devices.
 
 Usage of device-info:
+
 	-ccu address
-			address of the CCU (default "127.0.0.1")
+		address of the CCU (default "127.0.0.1")
 	-device address
-			address (serial no.) of a CCU device/channel (default "BidCoS-RF:1")
+		address (serial no.) of a CCU device/channel (default "BidCoS-RF:1")
 	-list
-			list all devices
+		list all devices
 	-log severity
-			specifies the minimum severity of printed log messages: off, error, warning, info, debug or trace (default INFO)
+		specifies the minimum severity of printed log messages: ERROR, WARN, INFO, DEBUG
 	-port number
-			port number of the CCU interface process: e.g. 2000 (BidCos-Wired), 2001 (BidCos-RF), 2010 (HmIP-RF), 8701 (CUxD), 2121 (CCU-Jack) (default 2001)
+		port number of the CCU interface process: e.g. 2000 (BidCos-Wired), 2001 (BidCos-RF), 2010 (HmIP-RF), 8701 (CUxD), 2121 (CCU-Jack) (default 2001)
 
 Prerequisites:
-    Authentication of the XML-RPC interface must be switched off in the CCU's system control.
+
+	Authentication of the XML-RPC interface must be switched off in the CCU's system control.
 
 Build command:
+
 	go build -trimpath "-ldflags=-s -w" .
 */
 package main
@@ -25,30 +28,39 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 
-	"github.com/mdzio/go-hmccu/itf"
-	"github.com/mdzio/go-hmccu/itf/binrpc"
-	"github.com/mdzio/go-hmccu/itf/xmlrpc"
-	"github.com/mdzio/go-logging"
+	"github.com/mdzio/go-hmccu/v2/itf"
+	"github.com/mdzio/go-hmccu/v2/itf/binrpc"
+	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
 )
 
-var (
-	log = logging.Get("main")
+// wrap slog.Level to implement flag.Value interface
+type logLevel struct {
+	slog.Level
+}
 
-	logLevel = logging.InfoLevel
-	ccu      = flag.String("ccu", "127.0.0.1", "`address` of the CCU")
-	port     = flag.Int("port", 2001, "port `number` of the CCU interface process: e.g. 2000 (BidCos-Wired), 2001 (BidCos-RF), 2010 (HmIP-RF), 8701 (CUxD), 2121 (CCU-Jack)")
-	device   = flag.String("device", "BidCoS-RF:1", "`address` (serial no.) of a CCU device/channel")
-	list     = flag.Bool("list", false, "list all devices")
+// Set implements flag.Value interface
+func (l *logLevel) Set(s string) error {
+	return l.UnmarshalText([]byte(s))
+}
+
+var (
+	ccu    = flag.String("ccu", "127.0.0.1", "`address` of the CCU")
+	port   = flag.Int("port", 2001, "port `number` of the CCU interface process: e.g. 2000 (BidCos-Wired), 2001 (BidCos-RF), 2010 (HmIP-RF), 8701 (CUxD), 2121 (CCU-Jack)")
+	device = flag.String("device", "BidCoS-RF:1", "`address` (serial no.) of a CCU device/channel")
+	list   = flag.Bool("list", false, "list all devices")
+	logLvl logLevel // default slog.LevelInfo
+	log    = slog.With("component", "main")
 )
 
 func init() {
 	flag.Var(
-		&logLevel,
+		&logLvl,
 		"log",
-		"specifies the minimum `severity` of printed log messages: off, error, warning, info, debug or trace",
+		"specifies the minimum `severity` of printed log messages: ERROR, WARN, INFO, DEBUG",
 	)
 }
 
@@ -60,8 +72,9 @@ func run() error {
 	}
 	// flag.Parse calls os.Exit(2) on error
 	flag.Parse()
-	// set log options
-	logging.SetLevel(logLevel)
+
+	// set log level
+	slog.SetLogLoggerLevel(logLvl.Level)
 
 	// create interface client
 	addr := *ccu + ":" + strconv.Itoa(*port)
@@ -117,7 +130,7 @@ func main() {
 	err := run()
 	// log fatal error
 	if err != nil {
-		log.Error(err)
+		log.Error("Application failed", "error", err)
 		os.Exit(1)
 	}
 	os.Exit(0)

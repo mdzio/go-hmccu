@@ -4,9 +4,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/mdzio/go-hmccu/itf"
-	"github.com/mdzio/go-hmccu/itf/xmlrpc"
-	"github.com/mdzio/go-lib/conc"
+	"github.com/mdzio/go-hmccu/v2/itf"
+	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
+	"github.com/mdzio/go-hmccu/v2/util"
 )
 
 const (
@@ -37,12 +37,12 @@ func newServant(address, interfaceID string, model *Container) *servant {
 		model: model,
 		cmds:  make(chan interface{}, servantQueueSize),
 	}
-	s.cancel = conc.DaemonFunc(s.run)
+	s.cancel = util.DaemonFunc(s.run)
 	return s
 }
 
-func (s *servant) run(ctx conc.Context) {
-	log.Debugf("Starting servant for %s, interface ID %s", s.addr, s.itfID)
+func (s *servant) run(ctx util.Context) {
+	log.Debug("Starting servant", "address", s.addr, "interfaceId", s.itfID)
 	// use a retrying caller
 	cln := &itf.LogicLayerClient{
 		Name: s.addr,
@@ -61,7 +61,7 @@ func (s *servant) run(ctx conc.Context) {
 				// get device list of logic layer
 				lds, err := cln.ListDevices(s.itfID)
 				if err != nil {
-					log.Errorf("List devices failed on %s, interface ID %s: %v", s.addr, s.itfID, err)
+					log.Error("List devices failed", "address", s.addr, "interfaceId", s.itfID, "error", err)
 					continue
 				}
 				if ctx.IsDone() {
@@ -116,7 +116,7 @@ func (s *servant) run(ctx conc.Context) {
 				// send event to logic layer
 				err := cln.Event(s.itfID, c.address, c.valueKey, c.value)
 				if err != nil {
-					log.Errorf("Event failed on %s, interface ID %s: %v", s.addr, s.itfID, err)
+					log.Error("Event failed", "address", s.addr, "interfaceId", s.itfID, "error", err)
 				}
 			}
 
@@ -130,7 +130,7 @@ func (s *servant) command(cmd interface{}) {
 	select {
 	case s.cmds <- cmd:
 	default:
-		log.Errorf("Queue overflow for %s, interface ID %s", s.addr, s.itfID)
+		log.Error("Queue overflow", "address", s.addr, "interfaceId", s.itfID)
 	}
 }
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mdzio/go-hmccu/itf/xmlrpc"
+	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
 )
 
 const (

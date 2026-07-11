@@ -3,14 +3,13 @@ package itf
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 
-	"github.com/mdzio/go-hmccu/itf/xmlrpc"
-
-	"github.com/mdzio/go-logging"
+	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
 )
 
-var dclnLog = logging.Get("itf-d-client")
+var dclnLog = slog.With("component", "itf-d-client")
 
 // DeviceLayerClient provides access to the HomeMatic XML-RPC API of the device layer.
 type DeviceLayerClient struct {
@@ -21,7 +20,7 @@ type DeviceLayerClient struct {
 // GetDeviceDescription retrieves the device description for the specified
 // device.
 func (c *DeviceLayerClient) GetDeviceDescription(deviceAddress string) (*DeviceDescription, error) {
-	dclnLog.Debugf("Calling method getDeviceDescription(%s) on %s", deviceAddress, c.Name)
+	dclnLog.Debug("Calling method getDeviceDescription", "deviceAddress", deviceAddress, "name", c.Name)
 	// execute call
 	v, err := c.Call("getDeviceDescription", []*xmlrpc.Value{
 		{FlatString: deviceAddress},
@@ -42,7 +41,7 @@ func (c *DeviceLayerClient) GetDeviceDescription(deviceAddress string) (*DeviceD
 
 // ListDevices retrieves the device descriptions from all devices.
 func (c *DeviceLayerClient) ListDevices() ([]*DeviceDescription, error) {
-	dclnLog.Debugf("Calling method listDevices on %s", c.Name)
+	dclnLog.Debug("Calling method listDevices", "name", c.Name)
 	// execute call
 	v, err := c.Call("listDevices", []*xmlrpc.Value{})
 	if err != nil {
@@ -66,7 +65,7 @@ func (c *DeviceLayerClient) ListDevices() ([]*DeviceDescription, error) {
 
 // DeleteDevice deletes a device.
 func (c *DeviceLayerClient) DeleteDevice(deviceAddress string, flags int) error {
-	dclnLog.Debugf("Calling method deleteDevice on %s", c.Name)
+	dclnLog.Debug("Calling method deleteDevice", "deviceAddress", deviceAddress, "name", c.Name)
 	// execute call
 	v, err := c.Call("deleteDevice", []*xmlrpc.Value{
 		{FlatString: deviceAddress},
@@ -86,7 +85,7 @@ func (c *DeviceLayerClient) DeleteDevice(deviceAddress string, flags int) error 
 
 // GetParamsetDescription retrieves the paramset description from a device.
 func (c *DeviceLayerClient) GetParamsetDescription(deviceAddress string, paramsetType string) (ParamsetDescription, error) {
-	dclnLog.Debugf("Calling method getParamsetDescription(%s, %s) on %s", deviceAddress, paramsetType, c.Name)
+	dclnLog.Debug("Calling method getParamsetDescription", "deviceAddress", deviceAddress, "paramsetType", paramsetType, "name", c.Name)
 	// execute call
 	v, err := c.Call("getParamsetDescription", []*xmlrpc.Value{
 		{FlatString: deviceAddress},
@@ -108,7 +107,7 @@ func (c *DeviceLayerClient) GetParamsetDescription(deviceAddress string, paramse
 
 // GetParamset retrieves the specified parameter set.
 func (c *DeviceLayerClient) GetParamset(deviceAddress string, paramsetType string) (map[string]interface{}, error) {
-	dclnLog.Debugf("Calling method getParamset(%s, %s) on %s", deviceAddress, paramsetType, c.Name)
+	dclnLog.Debug("Calling method getParamset", "deviceAddress", deviceAddress, "paramsetType", paramsetType, "name", c.Name)
 	// execute call
 	v, err := c.Call("getParamset", []*xmlrpc.Value{
 		{FlatString: deviceAddress},
@@ -136,7 +135,7 @@ func (c *DeviceLayerClient) GetParamset(deviceAddress string, paramsetType strin
 
 // PutParamset writes the parameter set.
 func (c *DeviceLayerClient) PutParamset(deviceAddress string, paramsetType string, paramset map[string]interface{}) error {
-	dclnLog.Debugf("Calling method putParamset(%s, %s) on %s", deviceAddress, paramsetType, c.Name)
+	dclnLog.Debug("Calling method putParamset", "deviceAddress", deviceAddress, "paramsetType", paramsetType, "name", c.Name)
 	// convert value
 	ps, err := xmlrpc.NewValue(paramset)
 	if err != nil {
@@ -177,7 +176,7 @@ func (c *DeviceLayerClient) assertEmptyResponse(v *xmlrpc.Value) error {
 
 // SetValue sets a single value from the parameter set VALUES.
 func (c *DeviceLayerClient) SetValue(deviceAddress string, valueName string, value interface{}) error {
-	dclnLog.Debugf("Calling method setValue(%s, %s, %v) on %s", deviceAddress, valueName, value, c.Name)
+	dclnLog.Debug("Calling method setValue", "deviceAddress", deviceAddress, "valueName", valueName, "value", value, "name", c.Name)
 	// convert value
 	v, err := xmlrpc.NewValue(value)
 	if err != nil {
@@ -202,7 +201,7 @@ func (c *DeviceLayerClient) SetValue(deviceAddress string, valueName string, val
 
 // GetValue gets a single value from the parameter set VALUES.
 func (c *DeviceLayerClient) GetValue(deviceAddress string, valueName string) (interface{}, error) {
-	dclnLog.Debugf("Calling method getValue(%s, %s) on %s", deviceAddress, valueName, c.Name)
+	dclnLog.Debug("Calling method getValue", "deviceAddress", deviceAddress, "valueName", valueName, "name", c.Name)
 	// execute call
 	resp, err := c.Call("getValue", []*xmlrpc.Value{
 		{FlatString: deviceAddress},
@@ -224,7 +223,7 @@ func (c *DeviceLayerClient) GetValue(deviceAddress string, valueName string) (in
 // http://hostname[:port][/Path]. If the path is not specified, the CCU will use
 // /RPC2.
 func (c *DeviceLayerClient) Init(receiverAddress, id string) error {
-	dclnLog.Debugf("Calling method init(%s, %s) on %s", receiverAddress, id, c.Name)
+	dclnLog.Debug("Calling method init", "receiverAddress", receiverAddress, "id", id, "name", c.Name)
 	// execute call
 	resp, err := c.Call("init", []*xmlrpc.Value{
 		{FlatString: receiverAddress},
@@ -243,7 +242,7 @@ func (c *DeviceLayerClient) Init(receiverAddress, id string) error {
 
 // Deinit deregisters an interface. The receiverAddress should match with Init.
 func (c *DeviceLayerClient) Deinit(receiverAddress string) error {
-	dclnLog.Debugf("Calling method init(%s) on %s", receiverAddress, c.Name)
+	dclnLog.Debug("Calling method init", "receiverAddress", receiverAddress, "name", c.Name)
 	// execute call
 	resp, err := c.Call("init", []*xmlrpc.Value{
 		{FlatString: receiverAddress},
@@ -262,7 +261,7 @@ func (c *DeviceLayerClient) Deinit(receiverAddress string) error {
 
 // Ping triggers a pong event. Returns true on success.
 func (c *DeviceLayerClient) Ping(callerID string) (bool, error) {
-	dclnLog.Debugf("Calling method ping(%s) on %s", callerID, c.Name)
+	dclnLog.Debug("Calling method ping", "callerId", callerID, "name", c.Name)
 	// execute call
 	resp, err := c.Call("ping", []*xmlrpc.Value{
 		{FlatString: callerID},

@@ -10,7 +10,7 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/mdzio/go-hmccu/itf/xmlrpc"
+	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
 	"golang.org/x/text/encoding/charmap"
 )
 

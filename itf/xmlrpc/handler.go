@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"encoding/xml"
 	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
-
-	"github.com/mdzio/go-logging"
 
 	"golang.org/x/net/html/charset"
 	"golang.org/x/text/encoding/charmap"
@@ -16,7 +15,7 @@ import (
 // max. size of a valid request, if not specified: 10 MB
 const requestSizeLimit = 10 * 1024 * 1024
 
-var svrLog = logging.Get("xmlrpc-server")
+var svrLog = slog.With("component", "xmlrpc-server")
 
 // Handler implements a http.Handler which can handle XML-RPC requests. Remote
 // calls are dispatched to the registered Method's.
@@ -26,7 +25,7 @@ type Handler struct {
 }
 
 func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
-	svrLog.Tracef("Request received from %s, URI %s", req.RemoteAddr, req.RequestURI)
+	svrLog.Debug("Request received", "remoteAddress", req.RemoteAddr, "requestUri", req.RequestURI)
 
 	// read request
 	limit := h.RequestSizeLimit
@@ -36,14 +35,12 @@ func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	reqLimitReader := http.MaxBytesReader(resp, req.Body, limit)
 	reqBuf, err := io.ReadAll(reqLimitReader)
 	if err != nil {
-		svrLog.Debugf("Reading of request failed from %s: %v", req.RemoteAddr, err)
+		svrLog.Debug("Reading of request failed", "remoteAddress", req.RemoteAddr, "error", err)
 		http.Error(resp, "Reading of request failed: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	if svrLog.TraceEnabled() {
-		// attention: log message is probably ISO8859-1 encoded!
-		svrLog.Tracef("Request XML: %s", string(reqBuf))
-	}
+	// attention: log message is probably ISO8859-1 encoded!
+	svrLog.Debug("Request XML", "xml", string(reqBuf))
 
 	// decode request from xml
 	reqReader := bytes.NewBuffer(reqBuf)
@@ -52,7 +49,7 @@ func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	dec.CharsetReader = charset.NewReaderLabel
 	err = dec.Decode(methodCall)
 	if err != nil {
-		svrLog.Debugf("Decoding of request from %s failed: %v", req.RemoteAddr, err)
+		svrLog.Debug("Decoding of request failed", "remoteAddress", req.RemoteAddr, "error", err)
 		http.Error(resp, "Decoding of request failed: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -72,7 +69,7 @@ func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	res, err := h.Dispatch(methodCall.MethodName, args)
 	var methodResponse *MethodResponse
 	if err != nil {
-		svrLog.Debugf("Sending error response to %s: %v", req.RemoteAddr, err)
+		svrLog.Debug("Sending error response", "remoteAddress", req.RemoteAddr, "error", err)
 		methodResponse = newFaultResponse(err)
 	} else {
 		methodResponse = newMethodResponse(res)
@@ -89,21 +86,19 @@ func (h *Handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	enc := xml.NewEncoder(respWriter)
 	err = enc.Encode(methodResponse)
 	if err != nil {
-		svrLog.Errorf("Encoding of response for %s failed: %v", req.RemoteAddr, err)
+		svrLog.Error("Encoding of response failed", "remoteAddress", req.RemoteAddr, "error", err)
 		http.Error(resp, "Encoding of response failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if svrLog.TraceEnabled() {
-		// attention: log message is ISO8859-1 encoded!
-		svrLog.Tracef("Response XML: %s", respBuf.String())
-	}
+	// attention: log message is ISO8859-1 encoded!
+	svrLog.Debug("Response XML", "xml", respBuf.String())
 
 	// send response
 	resp.Header().Set("Content-Type", "text/xml")
 	resp.Header().Set("Content-Length", strconv.Itoa(respBuf.Len()))
 	_, err = resp.Write(respBuf.Bytes())
 	if err != nil {
-		svrLog.Warningf("Sending of response for %s failed: %v", req.RemoteAddr, err)
+		svrLog.Warn("Sending of response failed", "remoteAddress", req.RemoteAddr, "error", err)
 		return
 	}
 }

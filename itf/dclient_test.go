@@ -4,14 +4,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/mdzio/go-hmccu/itf/xmlrpc"
-	"github.com/mdzio/go-lib/any"
-	"github.com/mdzio/go-lib/testutil"
+	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
+	"github.com/mdzio/go-hmccu/v2/testcfg"
 )
 
 // Test configuration (environment variables)
 const (
-	// LOG_LEVEL: OFF, ERROR, WARNING, INFO, DEBUG, TRACE
+	// LOG_LEVEL: ERROR, WARN, INFO, DEBUG
 
 	// hostname or IP address of the test CCU, e.g. 192.168.0.10
 	ccuAddress = "CCU_ADDRESS"
@@ -26,7 +25,7 @@ const (
 )
 
 func newXMLTestClient(t *testing.T) *DeviceLayerClient {
-	addr := testutil.Config(t, ccuAddress) + ":2001"
+	addr := testcfg.Config(t, ccuAddress) + ":2001"
 	return &DeviceLayerClient{
 		Name:   addr,
 		Caller: &xmlrpc.Client{Addr: addr},
@@ -90,7 +89,7 @@ func TestClient_GetParamsetDescription(t *testing.T) {
 func TestClient_GetParamset(t *testing.T) {
 	c := newXMLTestClient(t)
 
-	ps, err := c.GetParamset(testutil.Config(t, hmlcsw1Device)+":1", "VALUES")
+	ps, err := c.GetParamset(testcfg.Config(t, hmlcsw1Device)+":1", "VALUES")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,18 +110,21 @@ func TestClient_GetParamset(t *testing.T) {
 func TestClient_GetSetParamsetMaster(t *testing.T) {
 	c := newXMLTestClient(t)
 
-	ps, err := c.GetParamset(testutil.Config(t, hmespmsw1Device)+":1", "MASTER")
+	ps, err := c.GetParamset(testcfg.Config(t, hmespmsw1Device)+":1", "MASTER")
 	if err != nil {
 		t.Fatal(err)
 	}
-	psm := any.Q(ps).Map()
-	tryMax := psm.Key("TRANSMIT_TRY_MAX").Int()
-	if psm.Err() != nil {
-		t.Fatal(err)
+	v, ok := ps["TRANSMIT_TRY_MAX"]
+	if !ok {
+		t.Fatal("TRANSMIT_TRY_MAX not found in paramset")
+	}
+	tryMax, ok := v.(int)
+	if !ok {
+		t.Fatal("TRANSMIT_TRY_MAX is not an int")
 	}
 
 	err = c.PutParamset(
-		testutil.Config(t, hmespmsw1Device)+":1",
+		testcfg.Config(t, hmespmsw1Device)+":1",
 		"MASTER",
 		map[string]interface{}{"TRANSMIT_TRY_MAX": tryMax + 1},
 	)
@@ -132,7 +134,7 @@ func TestClient_GetSetParamsetMaster(t *testing.T) {
 
 	// restore previous value
 	err = c.PutParamset(
-		testutil.Config(t, hmespmsw1Device)+":1",
+		testcfg.Config(t, hmespmsw1Device)+":1",
 		"MASTER",
 		map[string]interface{}{"TRANSMIT_TRY_MAX": tryMax},
 	)
@@ -144,7 +146,7 @@ func TestClient_GetSetParamsetMaster(t *testing.T) {
 func TestClient_GetSetValue(t *testing.T) {
 	c := newXMLTestClient(t)
 
-	val, err := c.GetValue(testutil.Config(t, hmlcsw1Device)+":1", "STATE")
+	val, err := c.GetValue(testcfg.Config(t, hmlcsw1Device)+":1", "STATE")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +155,7 @@ func TestClient_GetSetValue(t *testing.T) {
 		t.Fatal("bool expected")
 	}
 
-	err = c.SetValue(testutil.Config(t, hmlcsw1Device)+":1", "STATE", b)
+	err = c.SetValue(testcfg.Config(t, hmlcsw1Device)+":1", "STATE", b)
 	if err != nil {
 		t.Fatal(err)
 	}

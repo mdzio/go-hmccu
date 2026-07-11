@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/mdzio/go-hmccu/itf/xmlrpc"
+	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
 )
 
 func TestDeviceDescription(t *testing.T) {

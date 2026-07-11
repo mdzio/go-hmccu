@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/mdzio/go-hmccu/itf"
+	"github.com/mdzio/go-hmccu/v2/itf"
 )
 
 // Device is a generic container for channels and device master parameters. It

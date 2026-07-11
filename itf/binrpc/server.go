@@ -3,11 +3,11 @@ package binrpc
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"net"
 	"time"
 
-	"github.com/mdzio/go-hmccu/itf/xmlrpc"
-	"github.com/mdzio/go-logging"
+	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
 )
 
 const (
@@ -18,7 +18,7 @@ const (
 	requestSizeLimit = 2 * 1024 * 1024
 )
 
-var svrLog = logging.Get("binrpc-server")
+var svrLog = slog.With("component", "binrpc-server")
 
 // Server is a BIN-RPC server.
 type Server struct {
@@ -42,7 +42,7 @@ func (s *Server) Start() error {
 	s.done = make(chan struct{}, 1)
 
 	// start listening
-	svrLog.Infof("Starting BIN-RPC server on address %s", s.Addr)
+	svrLog.Info("Starting BIN-RPC server", "address", s.Addr)
 	l, err := net.Listen("tcp", s.Addr)
 	if err != nil {
 		return fmt.Errorf("Listen on address %s failed: %w", s.Addr, err)
@@ -75,7 +75,7 @@ func (s *Server) Start() error {
 					if max := 1 * time.Second; delay > max {
 						delay = max
 					}
-					svrLog.Tracef("Accept failed: %v", err)
+					svrLog.Debug("Accept failed", "error", err)
 					time.Sleep(delay)
 					// retry
 					continue
@@ -103,16 +103,16 @@ func (s *Server) Stop() {
 
 func (s *Server) handle(conn net.Conn) {
 	defer conn.Close()
-	svrLog.Trace("Request received from ", conn.RemoteAddr())
+	svrLog.Debug("Request received", "remoteAddress", conn.RemoteAddr())
 
 	// decode request
 	dec := NewDecoder(conn)
 	method, params, err := dec.DecodeRequest()
 	if err != nil {
-		svrLog.Errorf("Decoding of request from %s failed: %v", conn.RemoteAddr(), err)
+		svrLog.Error("Decoding of request failed", "remoteAddress", conn.RemoteAddr(), "error", err)
 		return
 	}
-	svrLog.Tracef("Received call from %s of method %s with parameters %s", method, conn.RemoteAddr(), params)
+	svrLog.Debug("Received call", "method", method, "remoteAddress", conn.RemoteAddr(), "parameters", params)
 
 	// repack params as xmlrpc.Array
 	args := &xmlrpc.Value{
@@ -132,28 +132,28 @@ func (s *Server) handle(conn net.Conn) {
 		// encode fault response
 		err := e.EncodeFault(merr)
 		if err != nil {
-			svrLog.Errorf("Encoding of fault response %v failed: %v", merr, err)
+			svrLog.Error("Encoding of fault response failed", "methodError", merr, "error", err)
 			return
 		}
-		svrLog.Warningf("Sending error response to %s: %v", conn.RemoteAddr(), merr)
+		svrLog.Warn("Sending error response", "remoteAddress", conn.RemoteAddr(), "methodError", merr)
 	} else {
 		// encode method result
 		err := e.EncodeResponse(res)
 		if err != nil {
-			svrLog.Errorf("Encoding of response %v failed: %v", res, err)
+			svrLog.Error("Encoding of response failed", "response", res, "error", err)
 			return
 		}
-		svrLog.Tracef("Sending response to %s: %v", conn.RemoteAddr(), res)
+		svrLog.Debug("Sending response", "remoteAddress", conn.RemoteAddr(), "response", res)
 	}
 
 	// send response
 	err = conn.SetWriteDeadline(time.Now().Add(sendTimeout))
 	if err != nil {
-		svrLog.Warningf("Setting of timeout for sending failed: %v", err)
+		svrLog.Warn("Setting of timeout for sending failed", "error", err)
 	}
 	_, err = conn.Write(buf.Bytes())
 	if err != nil {
-		svrLog.Warningf("Sending of response for %s failed: %v", conn.RemoteAddr(), err)
+		svrLog.Warn("Sending of response failed", "remoteAddress", conn.RemoteAddr(), "error", err)
 		return
 	}
 }

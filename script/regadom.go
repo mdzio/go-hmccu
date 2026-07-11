@@ -121,7 +121,7 @@ func (rd *ReGaDOM) explore() bool {
 	// retrieve rooms
 	rs, err := rd.ScriptClient.Rooms()
 	if err != nil {
-		scriptLog.Error("Retrieving of rooms from the CCU failed: ", err)
+		scriptLog.Error("Retrieving of rooms from the CCU failed", "error", err)
 		return false
 	}
 	if rd.delay() {
@@ -134,7 +134,7 @@ func (rd *ReGaDOM) explore() bool {
 	// retrieve functions
 	fs, err := rd.ScriptClient.Functions()
 	if err != nil {
-		scriptLog.Error("Retrieving of functions from the CCU failed: ", err)
+		scriptLog.Error("Retrieving of functions from the CCU failed", "error", err)
 		return false
 	}
 	if rd.delay() {
@@ -147,7 +147,7 @@ func (rd *ReGaDOM) explore() bool {
 	// retrieve devices
 	ds, err := rd.ScriptClient.Devices()
 	if err != nil {
-		scriptLog.Error("Retrieving of devices from the CCU failed: ", err)
+		scriptLog.Error("Retrieving of devices from the CCU failed", "error", err)
 		return false
 	}
 	if rd.delay() {
@@ -159,7 +159,7 @@ func (rd *ReGaDOM) explore() bool {
 		// retrieve channels
 		cs, err := rd.ScriptClient.Channels(d.ISEID)
 		if err != nil {
-			scriptLog.Error("Retrieving of devices from the CCU failed: ", err)
+			scriptLog.Error("Retrieving of channels from the CCU failed", "error", err)
 			return false
 		}
 		if rd.delay() {

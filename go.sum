@@ -1,8 +1,4 @@
-github.com/mdzio/go-lib v0.2.2 h1:3/59L//wOTDLQnbdt/rYPIXsXsoBFM/eC2tffWV7gto=
-github.com/mdzio/go-lib v0.2.2/go.mod h1:iT5EGniJ9KN32ynSFImmjSTOxscncRL6h6OagK/G1PY=
-github.com/mdzio/go-logging v1.0.0 h1:5ykv9QZfEEn3G8Xt2Kcq7FIXDUpXyvp9PUiqWtLDaP0=
-github.com/mdzio/go-logging v1.0.0/go.mod h1:PAR0NsQwdZiUSy/yykXTWm+kZsbYCLTkBnKgJ6O50rw=
-golang.org/x/net v0.56.0 h1:Rw8j/hFzGvJUZwNBXnAtf5sVDVt+65SK2C7IxCxZt5o=
-golang.org/x/net v0.56.0/go.mod h1:D3Ku6r+V6JROoZK144D2XfMHFcMq/0zSfLelVTCFKec=
-golang.org/x/text v0.38.0 h1:sXmwo9DwP3OK9EZ7PqAdaooSGozfl/3a6/xJcbzPRhE=
-golang.org/x/text v0.38.0/go.mod h1:YXZt3QhHUKYT53r2lLKFIVi6Ao1jdzrTR/KQ09qyxF4=
+golang.org/x/net v0.54.0 h1:2zJIZAxAHV/OHCDTCOHAYehQzLfSXuf/5SoL/Dv6w/w=
+golang.org/x/net v0.54.0/go.mod h1:Sj4oj8jK6XmHpBZU/zWHw3BV3abl4Kvi+Ut7cQcY+cQ=
+golang.org/x/text v0.37.0 h1:Cqjiwd9eSg8e0QAkyCaQTNHFIIzWtidPahFWR83rTrc=
+golang.org/x/text v0.37.0/go.mod h1:a5sjxXGs9hsn/AJVwuElvCAo9v8QYLzvavO5z2PiM38=

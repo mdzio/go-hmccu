@@ -3,14 +3,13 @@ package itf
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
-	"github.com/mdzio/go-hmccu/itf/xmlrpc"
-
-	"github.com/mdzio/go-logging"
+	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
 )
 
-var lclnLog = logging.Get("itf-l-client")
+var lclnLog = slog.With("component", "itf-l-client")
 
 // LogicLayerClient provides access to the HomeMatic XML-RPC API of the logic layer.
 type LogicLayerClient struct {
@@ -20,7 +19,7 @@ type LogicLayerClient struct {
 
 // ListDevices retrieves the device descriptions from all devices.
 func (c *LogicLayerClient) ListDevices(interfaceID string) ([]*DeviceDescription, error) {
-	lclnLog.Debugf("Calling method listDevices(%s) on %s", interfaceID, c.Name)
+	lclnLog.Debug("Calling method listDevices", "interfaceId", interfaceID, "name", c.Name)
 	// execute call
 	v, err := c.Call("listDevices", []*xmlrpc.Value{xmlrpc.NewString(interfaceID)})
 	if err != nil {
@@ -49,7 +48,7 @@ func (c *LogicLayerClient) ListDevices(interfaceID string) ([]*DeviceDescription
 
 // Event sends an event.
 func (c *LogicLayerClient) Event(interfaceID, address, valueKey string, value interface{}) error {
-	lclnLog.Debugf("Calling method event(%s, %s, %s, %v) on %s", interfaceID, address, valueKey, value, c.Name)
+	lclnLog.Debug("Calling method event", "interfaceId", interfaceID, "address", address, "valueKey", valueKey, "value", value, "name", c.Name)
 	// execute call
 	v, err := xmlrpc.NewValue(value)
 	if err != nil {
@@ -74,13 +73,11 @@ func (c *LogicLayerClient) Event(interfaceID, address, valueKey string, value in
 
 // NewDevices adds devices to the logic layer.
 func (c *LogicLayerClient) NewDevices(interfaceID string, devDescriptions []*DeviceDescription) error {
-	if lclnLog.DebugEnabled() {
-		var addrs []string
-		for _, dd := range devDescriptions {
-			addrs = append(addrs, dd.Address)
-		}
-		lclnLog.Debugf("Calling method newDevices(%s, %s) on %s", interfaceID, strings.Join(addrs, " "), c.Name)
+	var addrs []string
+	for _, dd := range devDescriptions {
+		addrs = append(addrs, dd.Address)
 	}
+	lclnLog.Debug("Calling method newDevices", "interfaceId", interfaceID, "addresses", strings.Join(addrs, " "), "name", c.Name)
 	// parameters
 	var data []*xmlrpc.Value
 	for _, dd := range devDescriptions {
@@ -104,7 +101,7 @@ func (c *LogicLayerClient) NewDevices(interfaceID string, devDescriptions []*Dev
 
 // DeleteDevices delete devicess from the logic layer.
 func (c *LogicLayerClient) DeleteDevices(interfaceID string, addresses []string) error {
-	lclnLog.Debugf("Calling method deleteDevices(%s, %s) on %s", interfaceID, strings.Join(addresses, " "), c.Name)
+	lclnLog.Debug("Calling method deleteDevices", "interfaceId", interfaceID, "addresses", strings.Join(addresses, " "), "name", c.Name)
 	// execute call
 	resp, err := c.Call("deleteDevices", []*xmlrpc.Value{
 		xmlrpc.NewString(interfaceID),

@@ -2,13 +2,13 @@ package itf
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/mdzio/go-hmccu/itf/binrpc"
-	"github.com/mdzio/go-hmccu/itf/xmlrpc"
-	"github.com/mdzio/go-logging"
+	"github.com/mdzio/go-hmccu/v2/itf/binrpc"
+	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
 )
 
 const (
@@ -16,7 +16,7 @@ const (
 	rpcPath = "/RPC2"
 )
 
-var iLog = logging.Get("itf-intercon")
+var iLog = slog.With("component", "itf-intercon")
 
 // Type is the type of a CCU interface (BidCos-RF, HmIP-RF, ...).
 type Type int
@@ -185,7 +185,7 @@ func (i *Interconnector) Start() {
 			port += 30000
 		}
 		addr := i.CCUAddr + ":" + strconv.Itoa(port) + cfg.path
-		iLog.Infof("Creating interface client for %s: %s", addr, cfg.reGaHssID)
+		iLog.Info("Creating interface client", "address", addr, "reGaHssId", cfg.reGaHssID)
 
 		// CUXD BIN-RPC or standard XML-RPC?
 		var caller xmlrpc.Caller
@@ -224,12 +224,12 @@ func (i *Interconnector) Start() {
 		if c.ReGaHssID == configs[int(CUxD)].reGaHssID {
 			devices, err := c.ListDevices()
 			if err != nil {
-				iLog.Errorf("List devices failed on CUxD: %v", err)
+				iLog.Error("List devices failed on CUxD", "error", err)
 				continue
 			}
 			err = i.NewDevices(c.RegistrationID, devices)
 			if err != nil {
-				iLog.Errorf("Callback for new devices failed: %v", err)
+				iLog.Error("Callback for new devices failed", "error", err)
 			}
 		}
 	}
@@ -262,7 +262,7 @@ func (i *Interconnector) Client(regID string) (*RegisteredClient, error) {
 func (i *Interconnector) callbackReceived(interfaceID string) {
 	itf, ok := i.clients[interfaceID]
 	if !ok {
-		iLog.Warning("Callback received for unknown interface ID: ", interfaceID)
+		iLog.Warn("Callback received for unknown interface ID", "interfaceId", interfaceID)
 		return
 	}
 	itf.CallbackReceived()
@@ -274,7 +274,7 @@ func (i *Interconnector) Event(interfaceID, address, valueKey string, value inte
 
 	// discard pong event
 	if valueKey == "PONG" && strings.HasPrefix(address, "CENTRAL") {
-		iLog.Trace("Discarding PONG event")
+		iLog.Debug("Discarding PONG event")
 		return nil
 	}
 

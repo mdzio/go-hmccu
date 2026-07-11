@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mdzio/go-hmccu/itf/xmlrpc"
+	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
 )
 
 func TestEncodeRequest(t *testing.T) {

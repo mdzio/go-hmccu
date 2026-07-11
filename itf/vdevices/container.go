@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/mdzio/go-hmccu/itf"
+	"github.com/mdzio/go-hmccu/v2/itf"
 )
 
 // GenericDevice that can be used by Handler.

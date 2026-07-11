@@ -39,7 +39,7 @@ func (i *RegisteredClient) Setup() {
 // Start registers at the CCU interface process and starts monitoring.
 func (i *RegisteredClient) Start() {
 	go func() {
-		dclnLog.Debug("Starting interface ", i.ReGaHssID)
+		dclnLog.Debug("Starting interface", "reGaHssId", i.ReGaHssID)
 
 		// defer clean up
 		defer func() {
@@ -47,7 +47,7 @@ func (i *RegisteredClient) Start() {
 			if !i.timer.Stop() {
 				<-i.timer.C
 			}
-			dclnLog.Trace("Interface stopped: ", i.ReGaHssID)
+			dclnLog.Debug("Interface stopped", "reGaHssId", i.ReGaHssID)
 			i.stopped <- struct{}{}
 		}()
 
@@ -87,9 +87,9 @@ func (i *RegisteredClient) Start() {
 			// ping
 			ok, err := i.Ping(i.RegistrationID + "-Ping")
 			if err != nil {
-				dclnLog.Warning(err)
+				dclnLog.Warn("Ping failed", "error", err)
 			} else if !ok {
-				dclnLog.Warning("Ping returned a failure")
+				dclnLog.Warn("Ping returned a failure")
 			}
 			i.timer.Reset(pingTimeout)
 
@@ -101,7 +101,7 @@ func (i *RegisteredClient) Start() {
 				// ping received
 			case <-i.timer.C:
 				// register again, if ping timed out
-				dclnLog.Errorf("CCU interface %s timed out", i.ReGaHssID)
+				dclnLog.Error("CCU interface timed out", "reGaHssId", i.ReGaHssID)
 				i.register()
 			}
 			i.timer.Reset(callbackTimeout)
@@ -129,13 +129,13 @@ func (i *RegisteredClient) CallbackReceived() {
 func (i *RegisteredClient) register() {
 	// register for callbacks (events, ...)
 	if err := i.Init(i.RegistrationURL, i.RegistrationID); err != nil {
-		dclnLog.Warning(err)
+		dclnLog.Warn("Registration failed", "error", err)
 	}
 }
 
 func (i *RegisteredClient) unregister() {
 	// stop callbacks
 	if err := i.Deinit(i.RegistrationURL); err != nil {
-		dclnLog.Warning(err)
+		dclnLog.Warn("Unregistration failed", "error", err)
 	}
 }
