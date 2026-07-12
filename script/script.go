@@ -411,11 +411,11 @@ func (sc *Client) Execute(script string) ([]string, error) {
 	return resp, nil
 }
 
-// ExecuteTempl executes a HM script template with the specified data remotely on the CCU.
-func (sc *Client) ExecuteTempl(templ *template.Template, data interface{}) ([]string, error) {
+// ExecuteTemplate executes a HM script template with the specified data remotely on the CCU.
+func (sc *Client) ExecuteTemplate(tmpl *template.Template, data any) ([]string, error) {
 	// fill template
 	var sb strings.Builder
-	err := templ.Execute(&sb, data)
+	err := tmpl.Execute(&sb, data)
 	if err != nil {
 		return nil, fmt.Errorf("Rendering of HM template with data %v failed: %v", data, err)
 	}
@@ -431,7 +431,7 @@ func (sc *Client) ExecuteTempl(templ *template.Template, data interface{}) ([]st
 // Rooms retrieves the room list from the CCU.
 func (sc *Client) Rooms() ([]AspectDef, error) {
 	scriptLog.Debug("Retrieving rooms")
-	resp, err := sc.ExecuteTempl(enumAspectsTempl, "ID_ROOMS")
+	resp, err := sc.ExecuteTemplate(enumAspectsTempl, "ID_ROOMS")
 	if err != nil {
 		return nil, err
 	}
@@ -441,7 +441,7 @@ func (sc *Client) Rooms() ([]AspectDef, error) {
 // Functions retrieves the room list from the CCU.
 func (sc *Client) Functions() ([]AspectDef, error) {
 	scriptLog.Debug("Retrieving functions")
-	resp, err := sc.ExecuteTempl(enumAspectsTempl, "ID_FUNCTIONS")
+	resp, err := sc.ExecuteTemplate(enumAspectsTempl, "ID_FUNCTIONS")
 	if err != nil {
 		return nil, err
 	}
@@ -451,7 +451,7 @@ func (sc *Client) Functions() ([]AspectDef, error) {
 // Devices retrieves all devices from the CCU.
 func (sc *Client) Devices() ([]DeviceDef, error) {
 	scriptLog.Debug("Retrieving devices")
-	resp, err := sc.ExecuteTempl(enumDevicesTempl, nil)
+	resp, err := sc.ExecuteTemplate(enumDevicesTempl, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -475,7 +475,7 @@ func (sc *Client) Devices() ([]DeviceDef, error) {
 // Channels retrieves the channels of a device from the CCU.
 func (sc *Client) Channels(iseID string) ([]ChannelDef, error) {
 	scriptLog.Debug("Retrieving channels of device", "iseId", iseID)
-	resp, err := sc.ExecuteTempl(enumChannelsTempl, iseID)
+	resp, err := sc.ExecuteTemplate(enumChannelsTempl, iseID)
 	if err != nil {
 		return nil, err
 	}
@@ -518,7 +518,7 @@ func (sc *Client) SystemVariables() (SysVarDefs, error) {
 	scriptLog.Debug("Retrieving list of system variables")
 
 	// query ReGaHss
-	lines, err := sc.ExecuteTempl(enumSysVarsTempl, nil)
+	lines, err := sc.ExecuteTemplate(enumSysVarsTempl, nil)
 	if err != nil {
 		return nil, fmt.Errorf("Retrieving list of system variables failed: %v", err)
 	}
@@ -612,7 +612,7 @@ func (sc *Client) ReadValues(objs []ValObjDef) ([]Value, error) {
 	scriptLog.Debug("Reading values of objects", "ids", strings.ReplaceAll(ids, "\t", " "))
 
 	// execute script
-	resp, err := sc.ExecuteTempl(readValuesTempl, ids)
+	resp, err := sc.ExecuteTemplate(readValuesTempl, ids)
 	if err != nil {
 		return nil, fmt.Errorf("Reading object values failed: %v", err)
 	}
@@ -751,7 +751,7 @@ func (sc *Client) WriteValue(obj ValObjDef, value interface{}) error {
 	}
 
 	// execute script
-	resp, err := sc.ExecuteTempl(writeValueTempl, map[string]interface{}{"ISEID": obj.ISEID, "Value": strval})
+	resp, err := sc.ExecuteTemplate(writeValueTempl, map[string]interface{}{"ISEID": obj.ISEID, "Value": strval})
 	if err != nil {
 		return fmt.Errorf("Writing of object %s failed: %v", obj.ISEID, err)
 	}
@@ -781,7 +781,7 @@ func (sc *Client) WriteSysVar(sysVar *SysVarDef, value interface{}) error {
 // Programs retrieves all programs from the CCU.
 func (sc *Client) Programs() ([]*ProgramDef, error) {
 	scriptLog.Debug("Retrieving programs")
-	resp, err := sc.ExecuteTempl(enumProgramsTempl, nil)
+	resp, err := sc.ExecuteTemplate(enumProgramsTempl, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -812,7 +812,7 @@ func (sc *Client) Programs() ([]*ProgramDef, error) {
 // ExecProgram executes a ReGaHssProgram.
 func (sc *Client) ExecProgram(p *ProgramDef) error {
 	scriptLog.Debug("Executing program", "displayName", p.DisplayName)
-	resp, err := sc.ExecuteTempl(execProgramTempl, p.ISEID)
+	resp, err := sc.ExecuteTemplate(execProgramTempl, p.ISEID)
 	if err != nil {
 		return err
 	}
@@ -828,7 +828,7 @@ func (sc *Client) ExecProgram(p *ProgramDef) error {
 // ReadExecTime reads the last execution time of a ReGaHssProgram.
 func (sc *Client) ReadExecTime(p *ProgramDef) (time.Time, error) {
 	scriptLog.Debug("Reading last executing time", "displayName", p.DisplayName)
-	resp, err := sc.ExecuteTempl(readExecTimeTempl, p.ISEID)
+	resp, err := sc.ExecuteTemplate(readExecTimeTempl, p.ISEID)
 	if err != nil {
 		return time.Time{}, err
 	}
