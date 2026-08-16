@@ -44,6 +44,37 @@ func TestDeviceDescription(t *testing.T) {
 	}
 }
 
+func TestDeviceDescriptionNilArrays(t *testing.T) {
+	value := &xmlrpc.Value{
+		Struct: &xmlrpc.Struct{
+			Members: []*xmlrpc.Member{
+				{
+					Name:  "CHILDREN",
+					Value: &xmlrpc.Value{}, // member Array is nil
+				},
+				{
+					Name:  "PARAMSETS",
+					Value: &xmlrpc.Value{}, // member Array is nil
+				},
+				{
+					Name:  "TEAM_CHANNELS",
+					Value: &xmlrpc.Value{}, // member Array is nil
+				},
+			},
+		},
+	}
+	want := &DeviceDescription{}
+	q := xmlrpc.Q(value)
+	got := &DeviceDescription{}
+	got.ReadFrom(q)
+	if q.Err() != nil {
+		t.Fatal(q.Err())
+	}
+	if !reflect.DeepEqual(want, got) {
+		t.Fatal(got)
+	}
+}
+
 func TestParameterDescription(t *testing.T) {
 	cases := []*ParameterDescription{
 		{

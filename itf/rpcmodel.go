@@ -79,6 +79,7 @@ func (d *DeviceDescription) ReadFrom(e *xmlrpc.Query) {
 	d.Type = e.TryKey("TYPE").String()
 	d.Address = e.TryKey("ADDRESS").String()
 	d.RFAddress = e.TryKey("RF_ADDRESS").Int()
+
 	// The interface VirtualDevices of the CCU returns an empty XML-RPC value
 	// instead of an empty XML-RPC array, if the device has no children.
 	c := e.TryKey("CHILDREN")
@@ -86,11 +87,21 @@ func (d *DeviceDescription) ReadFrom(e *xmlrpc.Query) {
 		// If not empty, it must be an array of strings.
 		d.Children = c.Strings()
 	}
+
 	d.Parent = e.TryKey("PARENT").String()
 	d.ParentType = e.TryKey("PARENT_TYPE").String()
 	d.Index = e.TryKey("INDEX").Int()
 	d.AESActive = e.TryKey("AES_ACTIVE").Int()
-	d.Paramsets = e.TryKey("PARAMSETS").Strings()
+
+	// The interface VirtualDevices of the CCU (e.g. Hue devices VIR-LG-* of the
+	// RaspberryMatic Hue integration) returns an empty XML-RPC value instead of
+	// an empty XML-RPC array for PARAMSETS as well.
+	p := e.TryKey("PARAMSETS")
+	if p.IsNotEmpty() {
+		// If not empty, it must be an array of strings.
+		d.Paramsets = p.Strings()
+	}
+
 	d.Firmware = e.TryKey("FIRMWARE").String()
 	d.AvailableFirmware = e.TryKey("AVAILABLE_FIRMWARE").String()
 	d.Version = e.TryKey("VERSION").Int()
@@ -101,7 +112,15 @@ func (d *DeviceDescription) ReadFrom(e *xmlrpc.Query) {
 	d.Group = e.TryKey("GROUP").String()
 	d.Team = e.TryKey("TEAM").String()
 	d.TeamTag = e.TryKey("TEAM_TAG").String()
-	d.TeamChannels = e.TryKey("TEAM_CHANNELS").Strings()
+
+	// Nil values did in fact occur in the two arrays above. As a precaution,
+	// this is also handled here.
+	tc := e.TryKey("TEAM_CHANNELS")
+	if tc.IsNotEmpty() {
+		// If not empty, it must be an array of strings.
+		d.TeamChannels = tc.Strings()
+	}
+
 	d.Interface = e.TryKey("INTERFACE").String()
 	d.Roaming = e.TryKey("ROAMING").Int()
 	d.RXMode = e.TryKey("RX_MODE").Int()
