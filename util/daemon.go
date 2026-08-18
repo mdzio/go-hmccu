@@ -49,9 +49,7 @@ func (c *context) Sleep(d time.Duration) error {
 		return nil
 	case <-c.done:
 		// cancel received, clean up timer
-		if !t.Stop() {
-			<-t.C
-		}
+		t.Stop()
 		return ErrCanceled
 	}
 }

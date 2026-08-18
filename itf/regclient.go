@@ -44,9 +44,7 @@ func (i *RegisteredClient) Start() {
 		// defer clean up
 		defer func() {
 			// free timer
-			if !i.timer.Stop() {
-				<-i.timer.C
-			}
+			i.timer.Stop()
 			dclnLog.Debug("Interface stopped", "reGaHssId", i.ReGaHssID)
 			i.stopped <- struct{}{}
 		}()
