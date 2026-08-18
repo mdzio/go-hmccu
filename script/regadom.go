@@ -65,9 +65,7 @@ func (rd *ReGaDOM) Start() {
 			select {
 			case <-rd.stopRequest:
 				// clean up timer
-				if !rd.timer.Stop() {
-					<-rd.timer.C
-				}
+				rd.timer.Stop()
 				return
 			case <-rd.timer.C:
 				// loop
@@ -98,9 +96,7 @@ func (rd *ReGaDOM) delay() bool {
 	select {
 	case <-rd.stopRequest:
 		// clean up timer
-		if !t.Stop() {
-			<-t.C
-		}
+		t.Stop()
 		return true
 	case <-t.C:
 		return false
