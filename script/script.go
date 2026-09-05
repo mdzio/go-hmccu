@@ -3,6 +3,7 @@ package script
 import (
 	"bufio"
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -337,6 +338,14 @@ type Client struct {
 	// If access is local, the proxy server can be bypassed.
 	UseInternalPort bool
 
+	// If enabled, TLS is used for the connection to the CCU. This has no
+	// effect, when UseInternalPort is set.
+	UseTLS bool
+
+	// If enabled, the verification of the TLS certificate is skipped. A
+	// warning is logged. This has no effect, when UseInternalPort is set.
+	InsecureSkipVerify bool
+
 	// Limits the size of a valid response
 	RespLimit int64
 
@@ -357,13 +366,18 @@ func (sc *Client) Execute(script string) ([]string, error) {
 	reqWriter.Write([]byte(script))
 
 	// build address
-	var port string
+	var protocol, port string
 	if sc.UseInternalPort {
+		protocol = "http"
 		port = "8183"
+	} else if sc.UseTLS {
+		protocol = "https"
+		port = "48181"
 	} else {
+		protocol = "http"
 		port = "8181"
 	}
-	addr := "http://" + sc.Addr + ":" + port + "/tclrega.exe"
+	addr := protocol + "://" + sc.Addr + ":" + port + "/tclrega.exe"
 
 	// http post
 	httpReq, err := http.NewRequest(http.MethodPost, addr, bytes.NewReader(reqBuf.Bytes()))
@@ -373,7 +387,19 @@ func (sc *Client) Execute(script string) ([]string, error) {
 	if sc.UserName != "" || sc.Password != "" {
 		httpReq.SetBasicAuth(sc.UserName, sc.Password)
 	}
-	httpResp, err := http.DefaultClient.Do(httpReq)
+
+	// configure HTTP client
+	client := http.DefaultClient
+	if sc.UseTLS && sc.InsecureSkipVerify {
+		scriptLog.Warn("TLS certificate verification is disabled", "address", sc.Addr)
+		client = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		}
+	}
+
+	httpResp, err := client.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("HTTP request failed on %s: %w", addr, err)
 	}
