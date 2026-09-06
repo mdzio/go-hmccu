@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -354,6 +355,10 @@ type Client struct {
 
 	// Password for HTTP basic authentication
 	Password string
+
+	// httpClient is lazily initialized on first use.
+	httpClient *http.Client
+	httpOnce   sync.Once
 }
 
 // Execute remotely executes a HM script on the CCU.
@@ -388,18 +393,21 @@ func (sc *Client) Execute(script string) ([]string, error) {
 		httpReq.SetBasicAuth(sc.UserName, sc.Password)
 	}
 
-	// configure HTTP client
-	client := http.DefaultClient
-	if sc.UseTLS && sc.InsecureSkipVerify {
-		scriptLog.Warn("TLS certificate verification is disabled", "address", sc.Addr)
-		client = &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			},
+	// initialize HTTP client (once)
+	sc.httpOnce.Do(func() {
+		if sc.UseTLS && sc.InsecureSkipVerify {
+			scriptLog.Warn("TLS certificate verification is disabled", "address", sc.Addr)
+			sc.httpClient = &http.Client{
+				Transport: &http.Transport{
+					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				},
+			}
+		} else {
+			sc.httpClient = http.DefaultClient
 		}
-	}
+	})
 
-	httpResp, err := client.Do(httpReq)
+	httpResp, err := sc.httpClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("HTTP request failed on %s: %w", addr, err)
 	}
