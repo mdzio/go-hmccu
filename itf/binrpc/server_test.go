@@ -2,7 +2,6 @@ package binrpc
 
 import (
 	"errors"
-	"log"
 	"testing"
 
 	"github.com/mdzio/go-hmccu/v2/itf/xmlrpc"
@@ -28,7 +27,7 @@ func TestServer(t *testing.T) {
 	// start server
 	err := svr.Start()
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	defer svr.Stop()
 
