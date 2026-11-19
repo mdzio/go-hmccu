@@ -394,6 +394,145 @@ func (c *DimmerChannel) Working() bool {
 	return c.working.Value().(bool)
 }
 
+// BlindChannel implements a HM blind channel (e.g. HM-LC-Bl1-FM:1).
+type BlindChannel struct {
+
+	Channel
+
+	// These callbacks are executed when an external system wants to change the
+	// values. Only if the function returns true, the value is actually set.
+	OnSetLevel   func(value float64) (ok bool)
+	OnSetStop    func() (ok bool)
+	OnSetInhibit func(value bool) (ok bool)
+
+	level     *FloatParameter
+	stop      *BoolParameter
+	inhibit   *BoolParameter
+	direction *IntParameter
+	working   *BoolParameter
+}
+
+// NewBlindChannel creates a new HM blind channel and adds it to the device.
+func NewBlindChannel(device *Device) *BlindChannel {
+
+	c := new(BlindChannel)
+	c.Channel.Init("BLIND")
+	// adding channel to device also initializes some fields
+	device.AddChannel(&c.Channel)
+	addInstallTest(&c.Channel)
+
+	// add LEVEL parameter
+	c.level = NewFloatParameter("LEVEL")
+	c.level.description.Control = "BLIND.LEVEL"
+	c.level.description.TabOrder = 0
+	c.level.description.Default = 0.0
+	c.level.description.Min = 0.0
+	c.level.description.Max = 1.0
+	c.level.description.Unit = "100%"
+	c.level.OnSetValue = func(value float64) bool {
+		if c.OnSetLevel != nil {
+			return c.OnSetLevel(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.level)
+
+	// add STOP parameter
+	c.stop = NewBoolParameter("STOP")
+	c.stop.description.Type = itf.ParameterTypeAction
+	c.stop.description.Operations = itf.ParameterOperationWrite
+	c.stop.description.Control = "BLIND.STOP"
+	c.stop.description.TabOrder = 1
+	c.stop.OnSetValue = func(value bool) bool {
+		if c.OnSetStop != nil {
+			return c.OnSetStop()
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.stop)
+
+	// add INHIBIT parameter
+	c.inhibit = NewBoolParameter("INHIBIT")
+	c.inhibit.description.Control = "NONE"
+	c.inhibit.description.TabOrder = 2
+	c.inhibit.OnSetValue = func(value bool) bool {
+		if c.OnSetInhibit != nil {
+			return c.OnSetInhibit(value)
+		} else {
+			return true
+		}
+	}
+	c.AddValueParam(c.inhibit)
+
+	// add DIRECTION parameter
+	c.direction = NewIntParameter("DIRECTION")
+	c.direction.description.Type = itf.ParameterTypeEnum
+	c.direction.description.Operations = itf.ParameterOperationRead | itf.ParameterOperationEvent
+	c.direction.description.Flags = itf.ParameterFlagVisible | itf.ParameterFlagInternal
+	c.direction.description.TabOrder = 3
+	c.direction.description.Default = 0
+	c.direction.description.Min = 0
+	c.direction.description.Max = 3
+	c.direction.description.ValueList = []string{"NONE", "UP", "DOWN", "UNDEFINED"}
+	c.AddValueParam(c.direction)
+
+	// add WORKING parameter
+	c.working = NewBoolParameter("WORKING")
+	c.working.description.Operations = itf.ParameterOperationRead | itf.ParameterOperationEvent
+	c.working.description.Flags = itf.ParameterFlagVisible | itf.ParameterFlagInternal
+	c.working.description.TabOrder = 5
+	c.AddValueParam(c.working)
+
+	return c
+}
+
+// SetLevel sets the level of the blind.
+func (c *BlindChannel) SetLevel(value float64) {
+	c.level.InternalSetValue(value)
+}
+
+// Level returns the level of the blind.
+func (c *BlindChannel) Level() float64 {
+	return c.level.Value().(float64)
+}
+
+// Stop sends a stop command to the blind.
+func (c *BlindChannel) Stop() {
+	c.stop.InternalSetValue(true)
+}
+
+// SetInhibit sets the inhibit state of the blind.
+func (c *BlindChannel) SetInhibit(value bool) {
+	c.inhibit.InternalSetValue(value)
+}
+
+// Inhibit returns the inhibit state of the blind.
+func (c *BlindChannel) Inhibit() bool {
+	return c.inhibit.Value().(bool)
+}
+
+// SetDirection sets the direction of the blind.
+func (c *BlindChannel) SetDirection(value int) {
+	c.direction.InternalSetValue(value)
+}
+
+// Direction returns the direction of the blind.
+func (c *BlindChannel) Direction() int {
+	return c.direction.Value().(int)
+}
+
+// SetWorking sets working state of the blind.
+func (c *BlindChannel) SetWorking(value bool) {
+	c.working.InternalSetValue(value)
+}
+
+// Working returns the working state of the blind.
+func (c *BlindChannel) Working() bool {
+	return c.working.Value().(bool)
+}
+
 // TemperatureChannel implements a HM temperature channel (e.g. HmIP-STHO:1).
 type TemperatureChannel struct {
 	Channel
